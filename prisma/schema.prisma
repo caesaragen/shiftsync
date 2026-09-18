@@ -21,6 +21,6 @@ model User {
   passwordHash String
   role         Role
   homeTimezone String   @default("America/New_York")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 }
