@@ -343,7 +343,7 @@ describe("prisma client singleton", () => {
 });
 ```
 
-(This test needs Vitest installed — that happens in Task 9. For now, write the file; you'll run it once Vitest exists. If you're doing Task 9 out of order to unblock this, that's fine — just don't skip writing the test first.)
+(This test needs Vitest installed — that happens in Task 10. For now, write the file; you'll run it once Vitest exists. If you're doing Task 10 out of order to unblock this, that's fine — just don't skip writing the test first.)
 
 - [ ] **Step 2: Add the `Role` enum and `User` model**
 
@@ -394,7 +394,7 @@ if (process.env.NODE_ENV !== "production") {
 
 - [ ] **Step 5: Run the test to verify it passes**
 
-Deferred until Task 9 installs Vitest — see that task's Step 4, which runs the full suite including this file.
+Deferred until Task 10 installs Vitest — see that task's Step 4, which runs the full suite including this file.
 
 - [ ] **Step 6: Commit**
 
@@ -445,7 +445,7 @@ describe("password hashing", () => {
 - [ ] **Step 3: Run the test to verify it fails**
 
 Run: `npx vitest run src/lib/password.test.ts`
-Expected: FAIL — `Cannot find module './password'` (Vitest itself gets installed in Task 9; if running this before Task 9, install Vitest now per Task 9 Steps 1–2 first, then return here).
+Expected: FAIL — `Cannot find module './password'` (Vitest itself gets installed in Task 10; if running this before Task 10, install Vitest now per Task 10 Steps 1–2 first, then return here).
 
 - [ ] **Step 4: Implement**
 
@@ -578,7 +578,7 @@ git commit -m "feat: add NextAuth Credentials provider with Prisma adapter"
 
 **Interfaces:**
 - Consumes: `hashPassword` from `@/lib/password` (Task 6).
-- Produces: one `User` row — `admin@coastaleats.test` / `admin123!` / role `ADMIN` — that Task 10's E2E test and every later phase's manual testing depend on as the known-good login.
+- Produces: one `User` row — `admin@coastaleats.test` / `admin123!` / role `ADMIN` — that Task 11's E2E test and every later phase's manual testing depend on as the known-good login.
 
 - [ ] **Step 1: Install tsx (to run TypeScript seed scripts directly)**
 
