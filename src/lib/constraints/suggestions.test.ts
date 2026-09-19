@@ -241,9 +241,9 @@ describe("suggestAlternatives", () => {
       },
     ] as never);
 
-    vi.mocked(prisma.user.findUnique).mockImplementation((async (args: any) => {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
-      if (args?.where?.id === "staff-1") {
+    vi.mocked(prisma.user.findUnique).mockImplementation((async (args: unknown) => {
+      const typedArgs = args as { where?: { id?: string } };
+      if (typedArgs?.where?.id === "staff-1") {
         return {
           id: "staff-1",
           name: "Jordan",
@@ -255,7 +255,7 @@ describe("suggestAlternatives", () => {
           updatedAt: new Date(),
         };
       }
-      if (args?.where?.id === "staff-2") {
+      if (typedArgs?.where?.id === "staff-2") {
         return {
           id: "staff-2",
           name: "Casey",

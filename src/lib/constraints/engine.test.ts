@@ -530,10 +530,11 @@ describe("loadContext", () => {
     vi.mocked(prisma.staffSkill.findMany).mockResolvedValue([]);
 
     // Mock to return only active certifications (endedAt: null)
-    vi.mocked(prisma.staffLocationCertification.findMany).mockImplementation((async (args: any) => {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
+    vi.mocked(prisma.staffLocationCertification.findMany).mockImplementation((async (
+      args: unknown,
+    ) => {
       // Simulate the database filtering by checking the where clause
-      if (args?.where?.endedAt === null) {
+      if ((args as { where?: { endedAt?: unknown } })?.where?.endedAt === null) {
         return [
           {
             id: "cert-1",

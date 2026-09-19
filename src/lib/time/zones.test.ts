@@ -148,7 +148,6 @@ describe("weekBounds", () => {
     expect(elapsedHours).toBe(167);
 
     // But it is still exactly 7 distinct local calendar days, Monday..Sunday.
-    const dayCount = Math.round(endZoned.diff(startZoned, "days").days * 24) / 24;
     expect(Math.ceil(elapsedHours / 24)).toBe(7);
   });
 
