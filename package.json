@@ -1,13 +1,13 @@
 {
-  "name": "feature-scaffold",
+  "name": "shiftsync",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "prepare": "husky install",
+    "prepare": "husky",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
