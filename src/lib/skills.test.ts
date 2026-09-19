@@ -11,7 +11,9 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { listSkills, createSkill } from "./skills";
+import { listAllSkills, createSkill } from "./skills";
+
+const admin = { id: "u1", name: "A", email: "a@x.test", role: "ADMIN" as const };
 
 beforeEach(() => {
   vi.mocked(prisma.skill.create).mockReset();
@@ -55,10 +57,11 @@ describe("createSkill", () => {
   });
 });
 
-describe("listSkills", () => {
-  it("returns all skills", async () => {
+describe("listAllSkills", () => {
+  it("returns all skills, unfiltered by the caller", async () => {
     vi.mocked(prisma.skill.findMany).mockResolvedValue([{ id: "s1", name: "Bartending" }] as never);
 
-    await expect(listSkills()).resolves.toEqual([{ id: "s1", name: "Bartending" }]);
+    await expect(listAllSkills(admin)).resolves.toEqual([{ id: "s1", name: "Bartending" }]);
+    expect(prisma.skill.findMany).toHaveBeenCalledWith();
   });
 });

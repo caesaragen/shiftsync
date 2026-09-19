@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/authz";
-import { listSkills } from "@/lib/skills";
+import { listAllSkills } from "@/lib/skills";
 import { createSkillAction } from "./actions";
 
 export default async function AdminSkillsPage({
@@ -7,9 +7,9 @@ export default async function AdminSkillsPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  await requireRole("ADMIN");
+  const user = await requireRole("ADMIN");
   const { error } = await searchParams;
-  const skills = await listSkills();
+  const skills = await listAllSkills(user);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">

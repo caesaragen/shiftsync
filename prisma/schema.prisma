@@ -80,6 +80,14 @@ model StaffSkill {
   @@unique([staffId, skillId])
 }
 
+// Certification *periods*, not a single row per (staff, location): a staff
+// member can be certified, de-certified, and re-certified at the same
+// location over time, and each period must be preserved (design spec §5
+// decision 1 — de-certification is a soft state change so history stays
+// auditable). There is deliberately NO @@unique([staffId, locationId]) — a
+// pair can have many rows across time, though at most one with endedAt:
+// null at once (enforced in application code, see certifyStaff). An index
+// still supports the "current certifications" lookups every read path does.
 model StaffLocationCertification {
   id          String    @id @default(cuid())
   staffId     String
@@ -90,5 +98,5 @@ model StaffLocationCertification {
   staff    User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  @@unique([staffId, locationId])
+  @@index([staffId, locationId])
 }

@@ -1,4 +1,6 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { visibleLocationScope, type SessionUser } from "@/lib/authz";
 
 export type StaffAssignmentView = {
   id: string;
@@ -38,16 +40,23 @@ export async function removeSkill(staffId: string, skillId: string): Promise<voi
 }
 
 /**
- * Certify a staff member at a location, or re-certify one whose prior
- * certification was ended. Uses `upsert` against the
- * `@@unique([staffId, locationId])` constraint so re-certification clears
- * `endedAt` instead of failing on the unique constraint.
+ * Certify a staff member at a location. Certification is modeled as
+ * *periods* (design spec §5 decision 1), not a single row per (staff,
+ * location): if there is no currently-active certification (a row with
+ * `endedAt: null`), this creates a NEW row rather than reviving the old
+ * one. A staff member certified Jan 1, de-certified Jun 1, and re-certified
+ * Sep 1 must end up with two distinct rows — the Jan–Jun period and a new
+ * Sep–present period — not one row that overwrites the Jun de-certification
+ * and asserts continuous certification across the gap. A no-op when a
+ * currently-active certification already exists.
  */
 export async function certifyStaff(staffId: string, locationId: string): Promise<void> {
-  await prisma.staffLocationCertification.upsert({
-    where: { staffId_locationId: { staffId, locationId } },
-    create: { staffId, locationId, endedAt: null },
-    update: { endedAt: null },
+  const active = await prisma.staffLocationCertification.findFirst({
+    where: { staffId, locationId, endedAt: null },
+  });
+  if (active) return;
+  await prisma.staffLocationCertification.create({
+    data: { staffId, locationId, endedAt: null },
   });
 }
 
@@ -67,11 +76,32 @@ export async function decertifyStaff(staffId: string, locationId: string): Promi
 /**
  * Staff users with their current skills and all location certifications
  * (active and ended). Ended certifications are included, not filtered out —
- * the admin page must show them distinctly rather than hiding them.
+ * callers must show them distinctly rather than hiding them.
+ *
+ * Scoped by the caller (uniform data-layer scoping contract): an ADMIN sees
+ * every staff member; a MANAGER sees only staff with a certification —
+ * active or ended — at a location they manage; a STAFF user sees only
+ * their own record. STAFF is intentionally scoped to "self", not to
+ * "everyone certified at my locations" — the latter would use
+ * `visibleLocationScope`'s STAFF branch (my active locations) to leak every
+ * OTHER staff member certified there, which is not what a plain staff
+ * member should see about their coworkers.
  */
-export async function listStaffAssignments(): Promise<StaffAssignmentView[]> {
+export async function listStaffAssignments(user: SessionUser): Promise<StaffAssignmentView[]> {
+  const where: Prisma.UserWhereInput = { role: "STAFF" };
+
+  if (user.role === "STAFF") {
+    where.id = user.id;
+  } else if (user.role === "MANAGER") {
+    const scope = await visibleLocationScope(user);
+    if (scope.scope === "ids") {
+      where.certifications = { some: { locationId: { in: scope.ids } } };
+    }
+  }
+  // ADMIN: no extra filter — sees every staff member.
+
   const staff = await prisma.user.findMany({
-    where: { role: "STAFF" },
+    where,
     orderBy: { name: "asc" },
     include: {
       staffSkills: { include: { skill: true } },

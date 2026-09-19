@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/authz";
 import { listStaffAssignments } from "@/lib/staff-assignments";
-import { listSkills } from "@/lib/skills";
+import { listAllSkills } from "@/lib/skills";
 import { listLocations } from "@/lib/locations";
 import {
   assignSkillAction,
@@ -25,8 +25,8 @@ export default async function AdminStaffPage({
   const user = await requireRole("ADMIN");
   const { error } = await searchParams;
   const [staff, skills, locations] = await Promise.all([
-    listStaffAssignments(),
-    listSkills(),
+    listStaffAssignments(user),
+    listAllSkills(user),
     listLocations(user),
   ]);
 

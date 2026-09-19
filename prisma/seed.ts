@@ -61,11 +61,17 @@ async function upsertStaffSkill(staffId: string, skillId: string) {
   });
 }
 
+// Certification is modeled as periods (see staff-assignments.ts /
+// certifyStaff): there is no `@@unique([staffId, locationId])` to upsert
+// against any more, so idempotency is done by hand — only create a new
+// period if there is no currently-active one already.
 async function upsertCertification(staffId: string, locationId: string) {
-  await prisma.staffLocationCertification.upsert({
-    where: { staffId_locationId: { staffId, locationId } },
-    create: { staffId, locationId, endedAt: null },
-    update: { endedAt: null },
+  const active = await prisma.staffLocationCertification.findFirst({
+    where: { staffId, locationId, endedAt: null },
+  });
+  if (active) return;
+  await prisma.staffLocationCertification.create({
+    data: { staffId, locationId, endedAt: null },
   });
 }
 
