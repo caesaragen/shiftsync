@@ -29,4 +29,66 @@ model User {
   homeTimezone String   @default("America/New_York")
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  managerLocations ManagerLocation[]
+  staffSkills      StaffSkill[]
+  certifications   StaffLocationCertification[]
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String
+  address   String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  managers       ManagerLocation[]
+  certifications StaffLocationCertification[]
+}
+
+model Skill {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  staffSkills StaffSkill[]
+}
+
+model ManagerLocation {
+  id         String   @id @default(cuid())
+  managerId  String
+  locationId String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  manager  User     @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([managerId, locationId])
+}
+
+model StaffSkill {
+  id        String   @id @default(cuid())
+  staffId   String
+  skillId   String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  staff User  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, skillId])
+}
+
+model StaffLocationCertification {
+  id          String    @id @default(cuid())
+  staffId     String
+  locationId  String
+  certifiedAt DateTime  @default(now()) @db.Timestamptz(3)
+  endedAt     DateTime? @db.Timestamptz(3)
+
+  staff    User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, locationId])
 }
