@@ -74,21 +74,33 @@ export async function decertifyStaff(staffId: string, locationId: string): Promi
 }
 
 /**
- * Staff users with their current skills and all location certifications
- * (active and ended). Ended certifications are included, not filtered out —
- * callers must show them distinctly rather than hiding them.
+ * Staff users with their current skills and location certifications.
+ * Ended certifications are included, not filtered out — callers must show
+ * them distinctly rather than hiding them.
  *
- * Scoped by the caller (uniform data-layer scoping contract): an ADMIN sees
- * every staff member; a MANAGER sees only staff with a certification —
- * active or ended — at a location they manage; a STAFF user sees only
- * their own record. STAFF is intentionally scoped to "self", not to
- * "everyone certified at my locations" — the latter would use
- * `visibleLocationScope`'s STAFF branch (my active locations) to leak every
- * OTHER staff member certified there, which is not what a plain staff
- * member should see about their coworkers.
+ * Scoped by the caller (uniform data-layer scoping contract) in TWO
+ * dimensions, both of which matter — scoping only the first is a leak:
+ *  1. WHICH staff are returned at all: an ADMIN sees every staff member; a
+ *     MANAGER sees only staff with a certification — active or ended — at
+ *     a location they manage; a STAFF user sees only their own record.
+ *     STAFF is intentionally scoped to "self", not to "everyone certified
+ *     at my locations" — the latter would use `visibleLocationScope`'s
+ *     STAFF branch (my active locations) to leak every OTHER staff member
+ *     certified there, which is not what a plain staff member should see
+ *     about their coworkers.
+ *  2. WHICH of a returned staff member's certifications are included: a
+ *     MANAGER matching on (1) must not then receive that staff member's
+ *     FULL certification history — only the certifications at locations
+ *     the manager actually manages. Without this, a Harbor Point manager
+ *     who can see a staff member (because they're certified there) would
+ *     also learn that person is certified at Pier 39, a location the
+ *     manager has no relationship to. ADMIN and STAFF (self) keep the
+ *     full history — an admin seeing the whole org, and a staff member
+ *     seeing their own complete record, are both correct.
  */
 export async function listStaffAssignments(user: SessionUser): Promise<StaffAssignmentView[]> {
   const where: Prisma.UserWhereInput = { role: "STAFF" };
+  let certificationsWhere: Prisma.StaffLocationCertificationWhereInput | undefined;
 
   if (user.role === "STAFF") {
     where.id = user.id;
@@ -96,16 +108,18 @@ export async function listStaffAssignments(user: SessionUser): Promise<StaffAssi
     const scope = await visibleLocationScope(user);
     if (scope.scope === "ids") {
       where.certifications = { some: { locationId: { in: scope.ids } } };
+      certificationsWhere = { locationId: { in: scope.ids } };
     }
   }
-  // ADMIN: no extra filter — sees every staff member.
+  // ADMIN: no extra filter on either dimension — sees every staff member's
+  // full certification history.
 
   const staff = await prisma.user.findMany({
     where,
     orderBy: { name: "asc" },
     include: {
       staffSkills: { include: { skill: true } },
-      certifications: { include: { location: true } },
+      certifications: { where: certificationsWhere, include: { location: true } },
     },
   });
 

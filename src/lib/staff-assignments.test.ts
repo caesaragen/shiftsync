@@ -242,6 +242,45 @@ describe("listStaffAssignments", () => {
     );
   });
 
+  it("scopes a MANAGER's INCLUDED certifications to their managed locations too — not just which staff match", async () => {
+    // Regression test: the `where` clause above only controls which staff
+    // members are RETURNED (anyone with a matching certification). Without
+    // a matching filter on the `include`, a matched staff member's entire
+    // certification history — every location, active or ended — comes
+    // back, including locations the manager has no relationship to. A
+    // Harbor Point manager must not learn that a staff member also works
+    // at Pier 39.
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc1", "loc2"] });
+    vi.mocked(prisma.user.findMany).mockResolvedValue(rows as never);
+
+    await listStaffAssignments(manager);
+
+    const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as {
+      include?: { certifications?: { where?: unknown } };
+    };
+    expect(call.include?.certifications).toMatchObject({
+      where: { locationId: { in: ["loc1", "loc2"] } },
+    });
+  });
+
+  it("keeps an ADMIN's and a STAFF's included certifications unfiltered (full history)", async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue(rows as never);
+
+    await listStaffAssignments(admin);
+    const adminCall = vi.mocked(prisma.user.findMany).mock.calls[0][0] as {
+      include?: { certifications?: { where?: unknown } };
+    };
+    expect(adminCall.include?.certifications?.where).toBeUndefined();
+
+    vi.mocked(prisma.user.findMany).mockClear();
+
+    await listStaffAssignments(staff);
+    const staffCall = vi.mocked(prisma.user.findMany).mock.calls[0][0] as {
+      include?: { certifications?: { where?: unknown } };
+    };
+    expect(staffCall.include?.certifications?.where).toBeUndefined();
+  });
+
   it("scopes to only the staff member's own record for STAFF — never their coworkers'", async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue(rows as never);
 
