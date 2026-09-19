@@ -5,9 +5,9 @@ Copy into the project root. Fill in the `[Project]` section, keep everything els
 
 ## Project
 
-- **Name**: [project name]
-- **Purpose**: [one or two sentences]
-- **Deployment target**: [Vercel / other]
+- **Name**: ShiftSync
+- **Purpose**: Multi-location staff scheduling for a fictional restaurant group ("Coastal Eats"), with role-based scheduling, swaps, and shift coverage.
+- **Deployment target**: Vercel
 
 ## Required skills / plugins
 
@@ -28,7 +28,7 @@ Install before starting work:
 
 - **TypeScript only.** No `.js`/`.jsx` files in `src/`. `strict: true` in `tsconfig.json`, no `any` without an explicit inline justification comment.
 - **Always initialize the project properly before writing feature code**: `create-next-app` with TypeScript + App Router, ESLint, Tailwind (if used) configured at scaffold time — not bolted on later.
-- Package manager: [npm / pnpm / yarn — pick one, don't mix lockfiles]
+- Package manager: npm
 - Formatting/linting: ESLint + Prettier, enforced via pre-commit hook (husky + lint-staged).
 
 ## Git workflow — required
@@ -54,7 +54,7 @@ Install before starting work:
 
 - Small, single-responsibility components and functions — if a component file exceeds ~150–200 lines, it's a signal to split it.
 - No dead code, no commented-out blocks left in — delete or explain in a linked issue.
-- Descriptive naming over comments explaining *what*; comments are for *why*, sparingly.
+- Descriptive naming over comments explaining _what_; comments are for _why_, sparingly.
 - Server Components by default; `'use client'` only where interactivity genuinely requires it.
 - Co-locate related files (component + its test + its styles) rather than splitting by file type across the tree.
 
@@ -62,7 +62,7 @@ Install before starting work:
 
 - Use the Apple Design Skill for: spacing/grid decisions, color and typography scale, motion/easing curves, and accessibility (contrast, focus states, reduced-motion support) — even though this is a web app, not native iOS/macOS.
 - Aim for restraint and clarity over decoration — hierarchy through type and spacing before color or shadow.
-- Don't literally reskin the app as iOS/macOS chrome unless explicitly asked; the skill is for design *principles* (hierarchy, consistency, accessible defaults), not for making a web app look like a native Apple app.
+- Don't literally reskin the app as iOS/macOS chrome unless explicitly asked; the skill is for design _principles_ (hierarchy, consistency, accessible defaults), not for making a web app look like a native Apple app.
 
 ## What NOT to do
 
