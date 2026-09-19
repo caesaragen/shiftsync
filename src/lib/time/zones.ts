@@ -24,10 +24,19 @@ export function localDateKey(instant: Date, timeZone: string): string {
  * spring-forward day the 02:00-03:00 hour doesn't exist locally, but a shift
  * that reads 04:30 on the clock must still report 270, not the lesser
  * elapsed duration.
+ *
+ * Floored to a whole minute (`Math.floor`), not rounded and not fractional:
+ * `Availability.startMinutes`/`endMinutes` are `Int` columns, and a shift
+ * starting at 09:00:30 is *within* a window that starts at 09:00, not
+ * excluded from it by a few stray seconds pushing the value past the
+ * integer boundary. Flooring (rather than rounding) is what makes that
+ * true consistently -- 09:00:59 must still floor down into the 09:00
+ * minute, not round up into 09:01 and spuriously fall outside a window
+ * that ends at 09:01.
  */
 export function minutesSinceLocalMidnight(instant: Date, timeZone: string): number {
   const zoned = toZoned(instant, timeZone);
-  return zoned.hour * 60 + zoned.minute + zoned.second / 60 + zoned.millisecond / 60000;
+  return Math.floor(zoned.hour * 60 + zoned.minute + zoned.second / 60 + zoned.millisecond / 60000);
 }
 
 /**

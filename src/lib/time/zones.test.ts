@@ -74,6 +74,16 @@ describe("minutesSinceLocalMidnight", () => {
     expect(minutesSinceLocalMidnight(instant, NY)).toBe(4 * 60 + 30);
   });
 
+  it("floors to a whole minute for a non-zero-second instant, never returning a fraction", () => {
+    // 09:00:30 local must read as *within* the 09:00 minute (i.e. 540),
+    // not as some fractional value between 540 and 541 -- Availability
+    // start/endMinutes are Int columns, so a shift starting mid-second must
+    // still compare equal to a window boundary expressed as a whole minute.
+    const instant = new Date("2026-06-15T13:00:30.500Z"); // 09:00:30.5 EDT (UTC-4)
+    expect(minutesSinceLocalMidnight(instant, NY)).toBe(9 * 60);
+    expect(Number.isInteger(minutesSinceLocalMidnight(instant, NY))).toBe(true);
+  });
+
   it("is correct on both sides of the fall-back transition", () => {
     // 2026-11-01T05:30:00Z = 01:30 EDT (offset -04:00, before 2am local fall-back)
     const beforeFallBack = new Date("2026-11-01T05:30:00Z");
