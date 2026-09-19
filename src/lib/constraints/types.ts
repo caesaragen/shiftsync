@@ -18,9 +18,26 @@ export type Violation = {
 
 export type EngineContext = {
   staff: { id: string; name: string; homeTimezone: string };
-  shift: { id: string; locationId: string; startAt: Date; endAt: Date; requiredSkillId: string };
-  /** The staff member's skills. */
-  skillIds: string[];
+  shift: {
+    id: string;
+    locationId: string;
+    /** Display name of the shift's location, e.g. "Pier 39" -- for messages, not matching. */
+    locationName: string;
+    /** IANA zone of the shift's location, e.g. "America/Los_Angeles" -- may differ from the staff member's homeTimezone; that mismatch is exactly what UNAVAILABLE needs to explain. */
+    locationTimezone: string;
+    startAt: Date;
+    endAt: Date;
+    requiredSkillId: string;
+    /** Display name of the required skill, e.g. "bartender" -- for messages, not matching. */
+    requiredSkillName: string;
+  };
+  /**
+   * The staff member's skills, id AND name together. Eligibility matching
+   * is ALWAYS by id (`skills[i].id`), never by name -- names exist purely
+   * so violation messages can say what the shift requires and what the
+   * staff member actually has, instead of showing opaque ids.
+   */
+  skills: { id: string; name: string }[];
   /** Active certifications only (endedAt IS NULL). */
   activeCertificationLocationIds: string[];
   availability: Availability[];

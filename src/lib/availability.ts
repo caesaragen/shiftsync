@@ -1,6 +1,7 @@
 import type { Availability } from "@prisma/client";
 import { DateTime } from "luxon";
 import { toZoned, localDateKey, minutesSinceLocalMidnight } from "@/lib/time/zones";
+import { formatClockMinutes, zoneAbbrev } from "@/lib/time/format";
 
 /**
  * A single availability window expressed in local minutes-since-midnight,
@@ -80,18 +81,8 @@ function isCovered(target: Interval, merged: Interval[]): boolean {
   return merged.some((iv) => iv.start <= target.start && target.end <= iv.end);
 }
 
-function formatClock(minutesOfDay: number): string {
-  const norm = ((minutesOfDay % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
-  const hour24 = Math.floor(norm / 60);
-  const minute = norm % 60;
-  const period = hour24 < 12 ? "AM" : "PM";
-  const hour12raw = hour24 % 12;
-  const hour12 = hour12raw === 0 ? 12 : hour12raw;
-  return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
-}
-
 function formatRange(start: number, end: number): string {
-  return `${formatClock(start)}–${formatClock(end)}`;
+  return `${formatClockMinutes(start)}–${formatClockMinutes(end)}`;
 }
 
 /**
@@ -136,7 +127,7 @@ export function isStaffAvailable(
   // expressed in the SAME zone (the staff member's home zone) here, since
   // that is all this function is given; a caller with more context (staff
   // name, shift location) can layer that on top of this reason.
-  const zoneLabel = startZoned.offsetNameShort ?? homeTimeZone;
+  const zoneLabel = zoneAbbrev(shift.startAt, homeTimeZone);
   const shiftRangeText = `${formatRange(shiftStartRel, shiftEndRel)} ${zoneLabel}`;
 
   // Deliberately lowercase and phrased to read naturally when a caller
