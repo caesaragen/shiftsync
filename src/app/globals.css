@@ -12,12 +12,13 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* The UI (bg-black/text-white buttons, text-gray-500/600 secondary text) is
+ * written for a single light palette, not for a dark variant — see
+ * create-next-app's original `prefers-color-scheme: dark` block, removed
+ * here. Adding real `dark:` support requires variants across every page,
+ * which is out of scope for this pass; committing to light-only avoids the
+ * near-black-on-near-black submit buttons and sub-AA gray text a dark-mode
+ * machine would otherwise render on top of this palette. */
 
 body {
   background: var(--background);

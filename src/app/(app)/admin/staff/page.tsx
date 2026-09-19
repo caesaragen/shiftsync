@@ -140,7 +140,9 @@ export default async function AdminStaffPage({
                           // Ended certifications are a soft state change (the row is
                           // never deleted) and must stay visible, not hidden — shown
                           // muted with the end date so the history is auditable.
-                          <span className="text-gray-400">
+                          // gray-500, not gray-400: gray-400 on white is ~2.5:1, below
+                          // WCAG AA's 4.5:1 for normal text; gray-500 is ~4.8:1.
+                          <span className="text-gray-500">
                             {cert.locationName} — ended {formatDate(cert.endedAt)}
                           </span>
                         )}
