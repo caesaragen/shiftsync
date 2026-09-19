@@ -21,3 +21,16 @@ test("wrong password is rejected and never reaches the dashboard", async ({ page
   await expect(page.getByText("Invalid email or password.")).toBeVisible();
   await expect(page.getByText("Signed in as")).toHaveCount(0);
 });
+
+test("unauthenticated visitor to /dashboard is redirected to /login", async ({ browser }) => {
+  // Fresh context with no storage state: no session cookie exists.
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto("/dashboard");
+
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByText("Signed in as")).toHaveCount(0);
+
+  await context.close();
+});
