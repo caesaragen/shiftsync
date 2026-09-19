@@ -139,16 +139,18 @@ export function isStaffAvailable(
   const zoneLabel = startZoned.offsetNameShort ?? homeTimeZone;
   const shiftRangeText = `${formatRange(shiftStartRel, shiftEndRel)} ${zoneLabel}`;
 
+  // Deliberately lowercase and phrased to read naturally when a caller
+  // composes "{staff name} is {reason}" (see constraints/eligibility.ts).
   if (merged.length === 0) {
     return {
       available: false,
-      reason: `No availability is on record for ${startZoned.toFormat("cccc, LLLL d")}, but this shift runs ${shiftRangeText}.`,
+      reason: `not scheduled to work on ${startZoned.toFormat("cccc, LLLL d")}, but this shift runs ${shiftRangeText}.`,
     };
   }
 
   const windowsText = merged.map((iv) => formatRange(iv.start, iv.end)).join(" and ");
   return {
     available: false,
-    reason: `Available ${windowsText} ${zoneLabel}, but this shift runs ${shiftRangeText}.`,
+    reason: `available ${windowsText} ${zoneLabel}, but this shift runs ${shiftRangeText}.`,
   };
 }
