@@ -33,6 +33,10 @@ model User {
   managerLocations ManagerLocation[]
   staffSkills      StaffSkill[]
   certifications   StaffLocationCertification[]
+  availability     Availability[]
+  shiftsCreated    Shift[]           @relation("ShiftCreatedBy")
+  assignments      ShiftAssignment[] @relation("AssignmentStaff")
+  assignmentsMade  ShiftAssignment[] @relation("AssignmentAssignedBy")
 }
 
 model Location {
@@ -45,6 +49,7 @@ model Location {
 
   managers       ManagerLocation[]
   certifications StaffLocationCertification[]
+  shifts         Shift[]
 }
 
 model Skill {
@@ -54,6 +59,7 @@ model Skill {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   staffSkills StaffSkill[]
+  shifts      Shift[]
 }
 
 model ManagerLocation {
@@ -99,4 +105,75 @@ model StaffLocationCertification {
   location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@index([staffId, locationId])
+}
+
+enum AvailabilityKind {
+  RECURRING
+  EXCEPTION
+}
+
+enum ShiftStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Availability {
+  id           String           @id @default(cuid())
+  staffId      String
+  kind         AvailabilityKind
+  dayOfWeek    Int? // 1=Monday .. 7=Sunday, RECURRING only
+  date         DateTime?        @db.Date // EXCEPTION only; a calendar date in the staff member's homeTimezone
+  startMinutes Int // minutes from local midnight, 0..1440
+  endMinutes   Int // exclusive; may exceed 1440 to express a window crossing midnight
+  isAvailable  Boolean          @default(true)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+
+  staff User @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, kind])
+}
+
+model Shift {
+  id              String      @id @default(cuid())
+  locationId      String
+  startAt         DateTime    @db.Timestamptz(3)
+  endAt           DateTime    @db.Timestamptz(3)
+  requiredSkillId String
+  headcount       Int         @default(1)
+  status          ShiftStatus @default(DRAFT)
+  notes           String?
+  createdById     String
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(3)
+
+  location      Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  requiredSkill Skill             @relation(fields: [requiredSkillId], references: [id])
+  createdBy     User              @relation("ShiftCreatedBy", fields: [createdById], references: [id])
+  assignments   ShiftAssignment[]
+
+  @@index([locationId, startAt])
+  @@index([startAt])
+}
+
+// `@@unique([shiftId, staffId])` is a database-level backstop against
+// double-assigning the same person to the same shift under a race. It is
+// NOT the double-booking rule (which spans *different* shifts, enforced in
+// application code) -- both exist on purpose.
+model ShiftAssignment {
+  id             String   @id @default(cuid())
+  shiftId        String
+  staffId        String
+  assignedById   String
+  assignedAt     DateTime @default(now()) @db.Timestamptz(3)
+  overrideReason String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  shift      Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  staff      User  @relation("AssignmentStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  assignedBy User  @relation("AssignmentAssignedBy", fields: [assignedById], references: [id])
+
+  @@unique([shiftId, staffId])
+  @@index([staffId, shiftId])
 }
