@@ -699,4 +699,110 @@ describe("suggestAlternatives", () => {
     expect(suggestion.reason.toLowerCase()).toContain("pier 39");
     expect(suggestion.reason.toLowerCase()).toMatch(/\d+\s*hour/);
   });
+
+  it("does not scale query count with candidate count (no N+1)", async () => {
+    // N=3 certified, skilled, available candidates. If suggestAlternatives
+    // re-queries per candidate (the old `await loadContext(staffId, shiftId)`
+    // loop), every one of these counts grows with N instead of staying flat.
+    const N = 3;
+    const candidateIds = Array.from({ length: N }, (_, i) => `staff-${i + 1}`);
+
+    vi.mocked(prisma.shift.findUnique).mockResolvedValue({
+      id: "shift-1",
+      locationId: "loc-1",
+      startAt: new Date("2026-06-15T14:00:00Z"), // Monday
+      endAt: new Date("2026-06-15T18:00:00Z"),
+      requiredSkillId: "skill-1",
+      headcount: 1,
+      status: "PUBLISHED",
+      notes: null,
+      createdById: "user-1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      location: {
+        id: "loc-1",
+        name: "Pier 39",
+        timezone: NY,
+        address: "123 Main St",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      requiredSkill: {
+        id: "skill-1",
+        name: "bartender",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    } as never);
+
+    vi.mocked(prisma.staffLocationCertification.findMany).mockResolvedValue(
+      candidateIds.map((staffId, i) => ({
+        id: `cert-${i + 1}`,
+        staffId,
+        locationId: "loc-1",
+        certifiedAt: new Date("2026-01-01"),
+        endedAt: null,
+      })) as never,
+    );
+
+    vi.mocked(prisma.user.findMany).mockResolvedValue(
+      candidateIds.map((staffId, i) => ({
+        id: staffId,
+        name: `Staff ${i + 1}`,
+        email: `${staffId}@test.com`,
+        passwordHash: "hash",
+        role: "STAFF",
+        homeTimezone: NY,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })) as never,
+    );
+
+    vi.mocked(prisma.staffSkill.findMany).mockResolvedValue(
+      candidateIds.map((staffId, i) => ({
+        id: `ss-${i + 1}`,
+        staffId,
+        skillId: "skill-1",
+        createdAt: new Date(),
+        skill: { id: "skill-1", name: "bartender", createdAt: new Date(), updatedAt: new Date() },
+      })) as never,
+    );
+
+    vi.mocked(prisma.availability.findMany).mockResolvedValue(
+      candidateIds.map((staffId, i) => ({
+        id: `avail-${i + 1}`,
+        staffId,
+        kind: "RECURRING",
+        dayOfWeek: 1,
+        date: null,
+        startMinutes: 0,
+        endMinutes: 1440,
+        isAvailable: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })) as never,
+    );
+
+    vi.mocked(prisma.shiftAssignment.findMany).mockResolvedValue([]);
+
+    const suggestions = await suggestAlternatives("shift-1");
+
+    // Sanity: the loop actually ran for all N candidates.
+    expect(suggestions).toHaveLength(N);
+
+    // The bulk-fetch queries each run exactly once, no matter how many
+    // candidates there are.
+    expect(prisma.shift.findUnique).toHaveBeenCalledTimes(1);
+    expect(prisma.staffLocationCertification.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.user.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.staffSkill.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.shiftAssignment.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.availability.findMany).toHaveBeenCalledTimes(1);
+
+    // These are only ever called from inside `loadContext`'s per-candidate
+    // queries -- zero calls proves the loop no longer re-queries the DB.
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(0);
+    expect(prisma.location.findUnique).toHaveBeenCalledTimes(0);
+    expect(prisma.skill.findUnique).toHaveBeenCalledTimes(0);
+  });
 });

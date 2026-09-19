@@ -224,8 +224,8 @@ function buildFakeDb(fixtures: Fixtures) {
       ),
     },
     availability: {
-      findMany: vi.fn(async ({ where }: { where: { staffId: string } }) =>
-        fixtures.availability.filter((a) => a.staffId === where.staffId),
+      findMany: vi.fn(async ({ where }: { where?: { staffId?: IdClause } } = {}) =>
+        fixtures.availability.filter((a) => idMatches(a.staffId, where?.staffId)),
       ),
     },
     shiftAssignment: {
