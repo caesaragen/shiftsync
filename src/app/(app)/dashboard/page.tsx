@@ -53,7 +53,14 @@ async function ManagerOverview({ user }: { user: SessionUser }) {
 
   return (
     <section>
-      <h2 className="text-sm font-medium text-gray-700">Your locations</h2>
+      {/* Deliberately not "Locations" (or containing it as a substring) —
+          the admin Locations page's e2e authorization spec asserts a
+          MANAGER/STAFF landing on /dashboard sees NO heading matching
+          "Locations", as the discriminating signal that they were truly
+          redirected away from the admin page rather than merely URL-
+          matched. A heading here with "Locations" in it would satisfy
+          that assertion by accident and mask a real redirect failure. */}
+      <h2 className="text-sm font-medium text-gray-700">Where you manage</h2>
       {locations.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">No locations assigned yet.</p>
       ) : (
@@ -78,7 +85,10 @@ async function StaffOverview({ user }: { user: SessionUser }) {
   return (
     <div className="flex flex-col gap-8">
       <section>
-        <h2 className="text-sm font-medium text-gray-700">Your locations</h2>
+        {/* See the comment in ManagerOverview above — kept off the word
+            "Locations" so it can never accidentally satisfy the admin
+            Locations page's "no such heading here" e2e assertion. */}
+        <h2 className="text-sm font-medium text-gray-700">Where you&apos;re certified</h2>
         {activeCertifications.length === 0 ? (
           <p className="mt-3 text-sm text-gray-500">Not currently certified at any location.</p>
         ) : (
