@@ -50,7 +50,7 @@ beforeEach(() => {
 
 describe("requireUser", () => {
   it("redirects an unauthenticated session to /login", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as never);
 
     await expect(requireUser()).rejects.toThrow("REDIRECT:/login");
     expect(redirect).toHaveBeenCalledWith("/login");
@@ -108,7 +108,7 @@ describe("requireRole", () => {
   it("still redirects an unauthenticated session to /login, not /dashboard", async () => {
     // requireRole delegates to requireUser first — an unauthenticated
     // visitor must hit the login redirect, not the role-mismatch one.
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as never);
 
     await expect(requireRole("ADMIN")).rejects.toThrow("REDIRECT:/login");
     expect(redirect).toHaveBeenCalledWith("/login");
