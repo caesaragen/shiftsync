@@ -1,14 +1,12 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/authz";
 
 export default async function DashboardPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+  const user = await requireUser();
 
   return (
     <main className="mx-auto mt-24 max-w-sm text-center">
-      <p>Signed in as {session.user.name}</p>
-      <p className="text-sm text-gray-500">{session.user.role}</p>
+      <p>Signed in as {user.name}</p>
+      <p className="text-sm text-gray-500">{user.role}</p>
     </main>
   );
 }

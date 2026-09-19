@@ -19,5 +19,6 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    server: { deps: { inline: [/next-auth/, /^next\//] } },
   },
 });
