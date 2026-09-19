@@ -3,6 +3,19 @@ import type { EngineContext } from "./types";
 import { checkConflicts } from "./conflicts";
 
 const NY = "America/New_York";
+const LA = "America/Los_Angeles";
+
+function existingShift(overrides: Partial<EngineContext["existingAssignments"][0]> = {}) {
+  return {
+    shiftId: "shift-existing-1",
+    locationId: "loc-pier39",
+    locationName: "Pier 39",
+    locationTimezone: NY,
+    startAt: new Date("2026-06-15T14:00:00Z"),
+    endAt: new Date("2026-06-15T18:00:00Z"),
+    ...overrides,
+  };
+}
 
 function baseCtx(overrides: Partial<EngineContext> = {}): EngineContext {
   return {
@@ -34,14 +47,7 @@ describe("checkConflicts", () => {
   describe("DOUBLE_BOOKING", () => {
     it("detects an exact overlap with an existing shift", () => {
       const ctx = baseCtx({
-        existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
-            startAt: new Date("2026-06-15T14:00:00Z"), // exact same time
-            endAt: new Date("2026-06-15T18:00:00Z"),
-          },
-        ],
+        existingAssignments: [existingShift()],
       });
       const violations = checkConflicts(ctx);
       const v = violations.find((x) => x.rule === "DOUBLE_BOOKING");
@@ -52,12 +58,10 @@ describe("checkConflicts", () => {
     it("detects a partial overlap (candidate starts before, ends in the middle)", () => {
       const ctx = baseCtx({
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T15:00:00Z"), // starts 1 hour into candidate
             endAt: new Date("2026-06-15T19:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -69,12 +73,10 @@ describe("checkConflicts", () => {
     it("detects a partial overlap (candidate starts in the middle, ends after)", () => {
       const ctx = baseCtx({
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T13:00:00Z"), // starts 1 hour before candidate
             endAt: new Date("2026-06-15T15:30:00Z"), // ends in the middle
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -91,12 +93,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-15T20:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -108,12 +108,10 @@ describe("checkConflicts", () => {
     it("detects when an existing shift fully contains the candidate", () => {
       const ctx = baseCtx({
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T12:00:00Z"),
             endAt: new Date("2026-06-15T20:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -125,12 +123,12 @@ describe("checkConflicts", () => {
     it("detects a conflict with a shift at a DIFFERENT location (a person can't be in two places at once)", () => {
       const ctx = baseCtx({
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-harbor-point", // different location
+          existingShift({
+            locationId: "loc-harbor-point",
+            locationName: "Harbor Point",
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -142,23 +140,19 @@ describe("checkConflicts", () => {
     it("DOUBLE_BOOKING message names the staff member, the conflicting location, and the conflicting shift's times", () => {
       const ctx = baseCtx({
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
+          existingShift({
             locationId: "loc-harbor-point",
+            locationName: "Harbor Point",
             startAt: new Date("2026-06-15T16:00:00Z"), // 12:00 PM EDT
             endAt: new Date("2026-06-15T20:00:00Z"), // 4:00 PM EDT
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
       const v = violations.find((x) => x.rule === "DOUBLE_BOOKING");
-      // The message should identify the person, the location, and the times -- but we need
-      // to check what location name we have for the existing assignment.
-      // Since EngineContext doesn't include display names for existing assignments,
-      // we'll use the locationId in the message for now. Let me re-read the types...
-      // Actually, the brief says "The message must name the conflicting shift's location and times."
-      // But existing assignments only have locationId, not locationName. We'll need to handle this.
       expect(v?.message).toContain("Jordan");
+      expect(v?.message).toContain("Harbor Point");
+      expect(v?.message).toMatch(/12:00 PM.*4:00 PM/);
     });
 
     it("back-to-back shifts (one ends exactly when the next starts) do NOT overlap", () => {
@@ -169,12 +163,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-15T22:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -190,17 +182,53 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-16T00:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
       const doubleBooking = violations.find((x) => x.rule === "DOUBLE_BOOKING");
       expect(doubleBooking).toBeUndefined();
+    });
+
+    it("cross-timezone conflict: detects overlap between Eastern and Pacific shifts, showing each in its own timezone", () => {
+      // Candidate: 2:00 PM–6:00 PM EDT at Pier 39 (Eastern)
+      // Existing: 11:00 AM–3:00 PM PDT at Sunset Grill (Pacific, same absolute times)
+      const ctx = baseCtx({
+        shift: {
+          id: "shift-eastern",
+          locationId: "loc-pier39",
+          locationName: "Pier 39",
+          locationTimezone: NY,
+          startAt: new Date("2026-06-15T18:00:00Z"), // 2:00 PM EDT
+          endAt: new Date("2026-06-15T22:00:00Z"), // 6:00 PM EDT
+          requiredSkillId: "skill-bartender",
+          requiredSkillName: "bartender",
+        },
+        existingAssignments: [
+          existingShift({
+            shiftId: "shift-pacific",
+            locationId: "loc-sunset-grill",
+            locationName: "Sunset Grill",
+            locationTimezone: LA,
+            startAt: new Date("2026-06-15T18:00:00Z"), // 11:00 AM PDT (same UTC as 2:00 PM EDT)
+            endAt: new Date("2026-06-15T22:00:00Z"), // 3:00 PM PDT (same UTC as 6:00 PM EDT)
+          }),
+        ],
+      });
+      const violations = checkConflicts(ctx);
+      const v = violations.find((x) => x.rule === "DOUBLE_BOOKING");
+      expect(v).toBeDefined();
+      expect(v?.severity).toBe("BLOCK");
+      // Message should show existing shift in Pacific time and candidate in Eastern time
+      expect(v?.message).toContain("Sunset Grill");
+      expect(v?.message).toContain("Pier 39");
+      expect(v?.message).toContain("11:00 AM"); // existing shift in PDT
+      expect(v?.message).toContain("3:00 PM"); // existing shift end in PDT
+      expect(v?.message).toContain("2:00 PM"); // candidate in EDT
+      expect(v?.message).toContain("6:00 PM"); // candidate in EDT
     });
   });
 
@@ -213,12 +241,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-16T02:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -235,12 +261,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-15T12:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T18:00:00Z"),
             endAt: new Date("2026-06-15T22:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -257,12 +281,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-16T08:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -278,12 +300,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-15T04:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -302,12 +322,10 @@ describe("checkConflicts", () => {
           endAt: new Date(candidateStart.getTime() + 4 * 60 * 60 * 1000),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: existingEnd,
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -327,12 +345,10 @@ describe("checkConflicts", () => {
           endAt: candidateEnd,
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: existingStart,
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -349,12 +365,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-15T22:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -373,12 +387,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-16T01:30:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -395,12 +407,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-15T07:00:00Z"), // 3 AM UTC next day = 11 PM EDT same day
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T12:00:00Z"), // 8 AM UTC = 4 AM EDT
             endAt: new Date("2026-06-15T16:00:00Z"), // noon UTC = 8 AM EDT
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -420,12 +430,10 @@ describe("checkConflicts", () => {
           endAt: new Date("2026-06-15T19:00:00Z"),
         },
         existingAssignments: [
-          {
-            shiftId: "shift-existing-1",
-            locationId: "loc-pier39",
+          existingShift({
             startAt: new Date("2026-06-15T14:00:00Z"),
             endAt: new Date("2026-06-15T18:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);
@@ -437,18 +445,18 @@ describe("checkConflicts", () => {
     it("both DOUBLE_BOOKING and REST_GAP can fire for different existing assignments", () => {
       const ctx = baseCtx({
         existingAssignments: [
-          {
+          existingShift({
             shiftId: "shift-1",
-            locationId: "loc-pier39",
             startAt: new Date("2026-06-15T17:00:00Z"), // overlaps with candidate
             endAt: new Date("2026-06-15T19:00:00Z"),
-          },
-          {
+          }),
+          existingShift({
             shiftId: "shift-2",
             locationId: "loc-harbor-point",
+            locationName: "Harbor Point",
             startAt: new Date("2026-06-16T00:00:00Z"), // too close (4 hours later)
             endAt: new Date("2026-06-16T04:00:00Z"),
-          },
+          }),
         ],
       });
       const violations = checkConflicts(ctx);

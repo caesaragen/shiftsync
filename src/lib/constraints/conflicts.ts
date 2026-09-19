@@ -26,14 +26,34 @@ export function checkConflicts(ctx: EngineContext): Violation[] {
 
     // DOUBLE_BOOKING: does the candidate shift overlap with this existing assignment?
     if (overlaps(candidateInterval, existingInterval)) {
-      const existingStartClock = formatInstantClock(existing.startAt, ctx.shift.locationTimezone);
-      const existingEndClock = formatInstantClock(existing.endAt, ctx.shift.locationTimezone);
-      const existingZone = zoneAbbrev(existing.startAt, ctx.shift.locationTimezone);
+      // Render each shift in its own location's timezone for clarity.
+      const candidateStartClock = formatInstantClock(ctx.shift.startAt, ctx.shift.locationTimezone);
+      const candidateEndClock = formatInstantClock(ctx.shift.endAt, ctx.shift.locationTimezone);
+      const candidateZone = zoneAbbrev(ctx.shift.startAt, ctx.shift.locationTimezone);
+
+      const existingStartClock = formatInstantClock(existing.startAt, existing.locationTimezone);
+      const existingEndClock = formatInstantClock(existing.endAt, existing.locationTimezone);
+      const existingZone = zoneAbbrev(existing.startAt, existing.locationTimezone);
+
+      const sameLocation = ctx.shift.locationId === existing.locationId;
+      const sameZone = ctx.shift.locationTimezone === existing.locationTimezone;
+
+      let message: string;
+      if (sameLocation && sameZone) {
+        // Simple case: same location, same timezone.
+        message = `${ctx.staff.name} is already assigned to a shift at ${existing.locationName} from ${existingStartClock} to ${existingEndClock} ${existingZone}, which overlaps this one.`;
+      } else if (sameZone) {
+        // Different locations, same timezone.
+        message = `${ctx.staff.name} is already assigned to a shift at ${existing.locationName} from ${existingStartClock} to ${existingEndClock} ${existingZone}, which overlaps this shift at ${ctx.shift.locationName}.`;
+      } else {
+        // Different timezones (common case: cross-location conflict).
+        message = `${ctx.staff.name} is already assigned to a shift at ${existing.locationName} from ${existingStartClock} to ${existingEndClock} ${existingZone}, which overlaps this shift at ${ctx.shift.locationName} (${candidateStartClock}–${candidateEndClock} ${candidateZone}).`;
+      }
 
       violations.push({
         rule: "DOUBLE_BOOKING",
         severity: "BLOCK",
-        message: `${ctx.staff.name} is already assigned to a shift at location ${existing.locationId} from ${existingStartClock} to ${existingEndClock} ${existingZone}, which overlaps this one.`,
+        message,
       });
     } else {
       // REST_GAP: only check if shifts don't overlap.

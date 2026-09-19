@@ -42,5 +42,14 @@ export type EngineContext = {
   activeCertificationLocationIds: string[];
   availability: Availability[];
   /** Other shifts this staff member is already assigned to, excluding this one. */
-  existingAssignments: { shiftId: string; startAt: Date; endAt: Date; locationId: string }[];
+  existingAssignments: {
+    shiftId: string;
+    startAt: Date;
+    endAt: Date;
+    locationId: string;
+    /** Display name of the existing shift's location, e.g. "Pier 39" -- for messages, not matching. */
+    locationName: string;
+    /** IANA zone of the existing shift's location. */
+    locationTimezone: string;
+  }[];
 };
