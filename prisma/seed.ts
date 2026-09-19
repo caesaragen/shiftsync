@@ -75,6 +75,27 @@ async function upsertCertification(staffId: string, locationId: string) {
   });
 }
 
+// Seeds a specific, already-ended certification period so the soft-delete
+// UI (the muted "ended {date}" row on the admin staff page) has demo data
+// without an evaluator having to perform a de-certification themselves.
+// Idempotent: only creates the ended row if no certification at all exists
+// yet for this (staff, location) pair, so re-running the seed never piles
+// up duplicate ended periods.
+async function upsertEndedCertification(
+  staffId: string,
+  locationId: string,
+  certifiedAt: Date,
+  endedAt: Date,
+) {
+  const existing = await prisma.staffLocationCertification.findFirst({
+    where: { staffId, locationId },
+  });
+  if (existing) return;
+  await prisma.staffLocationCertification.create({
+    data: { staffId, locationId, certifiedAt, endedAt },
+  });
+}
+
 async function main() {
   // --- Admin (Phase 0 — preserved exactly; Phase 0's Playwright tests and
   // the README depend on these precise values). ---
@@ -208,6 +229,7 @@ async function main() {
     },
   ] as const;
 
+  const staffByEmail: Record<string, { id: string }> = {};
   for (const def of staffDefs) {
     const staff = await upsertUser({
       name: def.name,
@@ -216,6 +238,7 @@ async function main() {
       role: "STAFF",
       homeTimezone: def.homeTimezone,
     });
+    staffByEmail[def.email] = staff;
     for (const skillName of def.skills) {
       await upsertStaffSkill(staff.id, skills[skillName].id);
     }
@@ -223,6 +246,19 @@ async function main() {
       await upsertCertification(staff.id, location.id);
     }
   }
+
+  // --- An ended certification, so the soft-delete UI (the muted "ended
+  // {date}" row on the admin staff page) has demo data without the
+  // evaluator having to de-certify someone themselves. Riley Bartender
+  // (seeded above as certified at Bayside only) previously worked — and was
+  // de-certified from — Harbor Point, a location she is no longer active
+  // at. ---
+  await upsertEndedCertification(
+    staffByEmail["staff2@coastaleats.test"].id,
+    harborPoint.id,
+    new Date("2026-01-05T00:00:00Z"),
+    new Date("2026-04-12T00:00:00Z"),
+  );
 }
 
 main()
