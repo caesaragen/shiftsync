@@ -1,3 +1,9 @@
+// Convention (design spec §3): every `DateTime` column MUST carry
+// `@db.Timestamptz(3)`. Prisma's default `DateTime` maps to a zone-less
+// Postgres `timestamp`, which silently drops UTC offset information. This
+// branch already needed a corrective migration for exactly that mistake —
+// don't repeat it on new models.
+
 generator client {
   provider = "prisma-client-js"
 }
