@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Role } from "@prisma/client";
 import { hashPassword } from "@/lib/password";
+import * as passwordModule from "@/lib/password";
 
 // Stub ONLY the Prisma user lookup. `verifyPassword` (from `@/lib/password`)
 // is left un-mocked so the password comparison exercised below is the real
@@ -61,6 +62,25 @@ describe("verifyCredentials", () => {
 
     await expect(verifyCredentials("nobody@example.com", "whatever")).resolves.toBeNull();
     expect(findUniqueMock).toHaveBeenCalledWith({ where: { email: "nobody@example.com" } });
+  });
+
+  it("still performs a bcrypt comparison for an unknown email (timing mitigation)", async () => {
+    // Regression guard for the user-enumeration timing side-channel: the
+    // "no such user" path must pay comparable bcrypt cost to the "wrong
+    // password" path, so we assert `verifyPassword` is actually invoked
+    // even when Prisma finds no matching row.
+    findUniqueMock.mockResolvedValueOnce(null);
+    const verifyPasswordSpy = vi.spyOn(passwordModule, "verifyPassword");
+
+    await expect(verifyCredentials("nobody@example.com", "whatever")).resolves.toBeNull();
+
+    expect(verifyPasswordSpy).toHaveBeenCalledTimes(1);
+    expect(verifyPasswordSpy).toHaveBeenCalledWith(
+      "whatever",
+      expect.stringMatching(/^\$2[aby]\$/),
+    );
+
+    verifyPasswordSpy.mockRestore();
   });
 
   it("returns null for the wrong password on an existing user", async () => {
