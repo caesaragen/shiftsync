@@ -14,12 +14,12 @@ vi.mock("@/lib/authz", async () => {
   const actual = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
   return {
     ...actual,
-    visibleLocationIds: vi.fn(),
+    visibleLocationScope: vi.fn(),
   };
 });
 
 import { prisma } from "@/lib/prisma";
-import { visibleLocationIds } from "@/lib/authz";
+import { visibleLocationScope } from "@/lib/authz";
 import { isValidTimezone, createLocation, updateLocation, listLocations } from "./locations";
 
 const admin = { id: "u1", name: "A", email: "a@x.test", role: "ADMIN" as const };
@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.mocked(prisma.location.create).mockReset();
   vi.mocked(prisma.location.update).mockReset();
   vi.mocked(prisma.location.findMany).mockReset();
-  vi.mocked(visibleLocationIds).mockReset();
+  vi.mocked(visibleLocationScope).mockReset();
 });
 
 describe("isValidTimezone", () => {
@@ -99,7 +99,7 @@ describe("updateLocation", () => {
 
 describe("listLocations", () => {
   it("returns everything for an admin (no filter)", async () => {
-    vi.mocked(visibleLocationIds).mockResolvedValue("ALL");
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "all" });
     vi.mocked(prisma.location.findMany).mockResolvedValue([{ id: "loc1" }] as never);
 
     await expect(listLocations(admin)).resolves.toEqual([{ id: "loc1" }]);
@@ -107,7 +107,7 @@ describe("listLocations", () => {
   });
 
   it("filters by id for a manager", async () => {
-    vi.mocked(visibleLocationIds).mockResolvedValue(["loc1", "loc2"]);
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc1", "loc2"] });
     vi.mocked(prisma.location.findMany).mockResolvedValue([{ id: "loc1" }] as never);
 
     await expect(listLocations(manager)).resolves.toEqual([{ id: "loc1" }]);

@@ -1,6 +1,6 @@
 import type { Location } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { visibleLocationIds, type SessionUser } from "@/lib/authz";
+import { visibleLocationScope, type SessionUser } from "@/lib/authz";
 
 export function isValidTimezone(tz: string): boolean {
   if (!tz) return false;
@@ -13,9 +13,9 @@ export function isValidTimezone(tz: string): boolean {
 }
 
 export async function listLocations(user: SessionUser): Promise<Location[]> {
-  const ids = await visibleLocationIds(user);
-  if (ids === "ALL") return prisma.location.findMany({});
-  return prisma.location.findMany({ where: { id: { in: ids } } });
+  const scope = await visibleLocationScope(user);
+  if (scope.scope === "all") return prisma.location.findMany({});
+  return prisma.location.findMany({ where: { id: { in: scope.ids } } });
 }
 
 export async function createLocation(input: {

@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { visibleLocationIds, assertCanManageLocation, ForbiddenError } from "./authz";
+import {
+  visibleLocationScope,
+  canSeeLocation,
+  assertCanManageLocation,
+  ForbiddenError,
+  type LocationScope,
+} from "./authz";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -19,9 +25,9 @@ beforeEach(() => {
   vi.mocked(prisma.staffLocationCertification.findMany).mockReset();
 });
 
-describe("visibleLocationIds", () => {
+describe("visibleLocationScope", () => {
   it("gives admins everything without querying assignments", async () => {
-    await expect(visibleLocationIds(admin)).resolves.toBe("ALL");
+    await expect(visibleLocationScope(admin)).resolves.toEqual({ scope: "all" });
     expect(prisma.managerLocation.findMany).not.toHaveBeenCalled();
   });
 
@@ -30,18 +36,44 @@ describe("visibleLocationIds", () => {
       { locationId: "loc1" },
       { locationId: "loc2" },
     ] as never);
-    await expect(visibleLocationIds(manager)).resolves.toEqual(["loc1", "loc2"]);
+    await expect(visibleLocationScope(manager)).resolves.toEqual({
+      scope: "ids",
+      ids: ["loc1", "loc2"],
+    });
   });
 
   it("gives staff only locations they are actively certified for", async () => {
     vi.mocked(prisma.staffLocationCertification.findMany).mockResolvedValue([
       { locationId: "loc3" },
     ] as never);
-    await expect(visibleLocationIds(staff)).resolves.toEqual(["loc3"]);
+    await expect(visibleLocationScope(staff)).resolves.toEqual({ scope: "ids", ids: ["loc3"] });
     // Ended certifications must be excluded at the query level
     expect(vi.mocked(prisma.staffLocationCertification.findMany).mock.calls[0][0]).toMatchObject({
       where: { staffId: "u3", endedAt: null },
     });
+  });
+});
+
+describe("canSeeLocation", () => {
+  it("returns true for any location id when scope is 'all'", () => {
+    const scope: LocationScope = { scope: "all" };
+    expect(canSeeLocation(scope, "loc1")).toBe(true);
+    expect(canSeeLocation(scope, "anything")).toBe(true);
+  });
+
+  it("returns true for a member id when scope is 'ids'", () => {
+    const scope: LocationScope = { scope: "ids", ids: ["loc1", "loc2"] };
+    expect(canSeeLocation(scope, "loc1")).toBe(true);
+  });
+
+  it("returns false for a non-member id when scope is 'ids'", () => {
+    const scope: LocationScope = { scope: "ids", ids: ["loc1", "loc2"] };
+    expect(canSeeLocation(scope, "loc9")).toBe(false);
+  });
+
+  it("returns false for any id when scope is 'ids' with an empty list", () => {
+    const scope: LocationScope = { scope: "ids", ids: [] };
+    expect(canSeeLocation(scope, "loc1")).toBe(false);
   });
 });
 
