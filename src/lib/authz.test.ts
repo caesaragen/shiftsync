@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
+  requireUser,
+  requireRole,
   visibleLocationScope,
   canSeeLocation,
   assertCanManageLocation,
@@ -14,7 +16,26 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+// `requireUser`/`requireRole` are the actual authorization boundary — every
+// admin page and Server Action goes through them. Stub only the boundary
+// they sit on: Auth.js's `auth()` (the session source) and Next's
+// `redirect()` (which, in real Next.js, throws to halt rendering — mocked
+// the same way here so a redirect genuinely short-circuits the function
+// under test instead of falling through to code that assumes a session
+// exists).
+vi.mock("@/auth", () => ({
+  auth: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((url: string) => {
+    throw new Error(`REDIRECT:${url}`);
+  }),
+}));
+
 const { prisma } = await import("@/lib/prisma");
+const { auth } = await import("@/auth");
+const { redirect } = await import("next/navigation");
 
 const admin = { id: "u1", name: "A", email: "a@x.test", role: "ADMIN" as const };
 const manager = { id: "u2", name: "M", email: "m@x.test", role: "MANAGER" as const };
@@ -23,6 +44,76 @@ const staff = { id: "u3", name: "S", email: "s@x.test", role: "STAFF" as const }
 beforeEach(() => {
   vi.mocked(prisma.managerLocation.findMany).mockReset();
   vi.mocked(prisma.staffLocationCertification.findMany).mockReset();
+  vi.mocked(auth).mockReset();
+  vi.mocked(redirect).mockClear();
+});
+
+describe("requireUser", () => {
+  it("redirects an unauthenticated session to /login", async () => {
+    vi.mocked(auth).mockResolvedValue(null);
+
+    await expect(requireUser()).rejects.toThrow("REDIRECT:/login");
+    expect(redirect).toHaveBeenCalledWith("/login");
+  });
+
+  it("redirects a session with no user id to /login", async () => {
+    // Defensive branch: a malformed/partial session (e.g. the id-copying
+    // `session` callback in auth.ts never ran) must not be treated as
+    // authenticated just because a session object exists.
+    vi.mocked(auth).mockResolvedValue({ user: {} } as never);
+
+    await expect(requireUser()).rejects.toThrow("REDIRECT:/login");
+    expect(redirect).toHaveBeenCalledWith("/login");
+  });
+
+  it("returns the SessionUser for an authenticated session", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "u1", name: "Alex Admin", email: "admin@coastaleats.test", role: "ADMIN" },
+    } as never);
+
+    await expect(requireUser()).resolves.toEqual({
+      id: "u1",
+      name: "Alex Admin",
+      email: "admin@coastaleats.test",
+      role: "ADMIN",
+    });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("requireRole", () => {
+  it("redirects a MANAGER hitting an ADMIN-only route to /dashboard", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "u2", name: "Morgan Manager", email: "m@x.test", role: "MANAGER" },
+    } as never);
+
+    await expect(requireRole("ADMIN")).rejects.toThrow("REDIRECT:/dashboard");
+    expect(redirect).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("lets an ADMIN through an ADMIN-only route and returns the SessionUser", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "u1", name: "Alex Admin", email: "admin@coastaleats.test", role: "ADMIN" },
+    } as never);
+
+    await expect(requireRole("ADMIN")).resolves.toEqual({
+      id: "u1",
+      name: "Alex Admin",
+      email: "admin@coastaleats.test",
+      role: "ADMIN",
+    });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("still redirects an unauthenticated session to /login, not /dashboard", async () => {
+    // requireRole delegates to requireUser first — an unauthenticated
+    // visitor must hit the login redirect, not the role-mismatch one.
+    vi.mocked(auth).mockResolvedValue(null);
+
+    await expect(requireRole("ADMIN")).rejects.toThrow("REDIRECT:/login");
+    expect(redirect).toHaveBeenCalledWith("/login");
+    expect(redirect).not.toHaveBeenCalledWith("/dashboard");
+  });
 });
 
 describe("visibleLocationScope", () => {
