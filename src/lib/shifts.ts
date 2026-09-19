@@ -1,6 +1,11 @@
 import type { Shift, Location, Skill, ShiftAssignment, User, ShiftStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { assertCanManageLocation, type SessionUser } from "@/lib/authz";
+import {
+  assertCanManageLocation,
+  canSeeLocation,
+  visibleLocationScope,
+  type SessionUser,
+} from "@/lib/authz";
 import { toZoned, weekBounds } from "@/lib/time/zones";
 
 export const EDIT_CUTOFF_HOURS = 48;
@@ -49,16 +54,28 @@ export function isWithinEditCutoff(
 
 /**
  * Lists all shifts for a given location during the Monday-start week containing
- * the given date. Enforces authorization via assertCanManageLocation.
+ * the given date (in the location's timezone). Enforces authorization via
+ * visibleLocationScope/canSeeLocation to allow STAFF reads at certified locations.
  */
 export async function listWeekShifts(
   user: SessionUser,
   locationId: string,
   weekOf: Date,
 ): Promise<ShiftWithDetail[]> {
-  await assertCanManageLocation(user, locationId);
+  // Check read authorization: STAFF can read locations they're certified for,
+  // MANAGER/ADMIN per their assigned locations
+  const scope = await visibleLocationScope(user);
+  if (!canSeeLocation(scope, locationId)) {
+    throw new Error("You do not have access to this resource.");
+  }
 
-  const { start, end } = weekBounds(weekOf, "UTC");
+  // Fetch location timezone for correct week-boundary calculation
+  const location = await prisma.location.findUniqueOrThrow({
+    where: { id: locationId },
+    select: { timezone: true },
+  });
+
+  const { start, end } = weekBounds(weekOf, location.timezone);
 
   return prisma.shift.findMany({
     where: {
@@ -82,7 +99,8 @@ export async function listWeekShifts(
 
 /**
  * Gets a shift by ID with full details (location, skill, assignments).
- * Enforces authorization via assertCanManageLocation on the shift's location.
+ * Enforces authorization via visibleLocationScope/canSeeLocation to allow STAFF
+ * reads at certified locations.
  */
 export async function getShift(user: SessionUser, shiftId: string): Promise<ShiftWithDetail> {
   const shift = await prisma.shift.findUnique({
@@ -102,7 +120,11 @@ export async function getShift(user: SessionUser, shiftId: string): Promise<Shif
     throw new Error(`Shift ${shiftId} not found.`);
   }
 
-  await assertCanManageLocation(user, shift.locationId);
+  // Check read authorization: STAFF can read locations they're certified for
+  const scope = await visibleLocationScope(user);
+  if (!canSeeLocation(scope, shift.locationId)) {
+    throw new Error("You do not have access to this resource.");
+  }
 
   return shift;
 }
@@ -169,8 +191,8 @@ export async function createShift(
 }
 
 /**
- * Publishes all shifts in the Monday-start week containing the given date.
- * Enforces authorization via assertCanManageLocation.
+ * Publishes all shifts in the Monday-start week containing the given date
+ * (in the location's timezone). Enforces authorization via assertCanManageLocation.
  */
 export async function publishWeek(
   user: SessionUser,
@@ -179,7 +201,13 @@ export async function publishWeek(
 ): Promise<{ count: number }> {
   await assertCanManageLocation(user, locationId);
 
-  const { start, end } = weekBounds(weekOf, "UTC");
+  // Fetch location timezone for correct week-boundary calculation
+  const location = await prisma.location.findUniqueOrThrow({
+    where: { id: locationId },
+    select: { timezone: true },
+  });
+
+  const { start, end } = weekBounds(weekOf, location.timezone);
 
   const result = await prisma.shift.updateMany({
     where: {
@@ -198,9 +226,9 @@ export async function publishWeek(
 }
 
 /**
- * Unpublishes all shifts in the Monday-start week containing the given date.
- * Refuses entirely (with clear error) if any shift in that week is within
- * the 48-hour edit cutoff.
+ * Unpublishes all shifts in the Monday-start week containing the given date
+ * (in the location's timezone). Refuses entirely (with clear error) if any shift
+ * in that week is within the 48-hour edit cutoff.
  * Enforces authorization via assertCanManageLocation.
  */
 export async function unpublishWeek(
@@ -210,7 +238,13 @@ export async function unpublishWeek(
 ): Promise<{ count: number }> {
   await assertCanManageLocation(user, locationId);
 
-  const { start, end } = weekBounds(weekOf, "UTC");
+  // Fetch location timezone for correct week-boundary calculation
+  const location = await prisma.location.findUniqueOrThrow({
+    where: { id: locationId },
+    select: { timezone: true },
+  });
+
+  const { start, end } = weekBounds(weekOf, location.timezone);
   const now = new Date();
 
   // Check for any shifts within the cutoff

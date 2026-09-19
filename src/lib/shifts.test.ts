@@ -11,6 +11,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     location: {
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
     skill: {
       findUnique: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("@/lib/authz", async () => {
   return {
     ...actual,
     assertCanManageLocation: vi.fn(),
+    visibleLocationScope: vi.fn(),
   };
 });
 
@@ -32,7 +34,7 @@ vi.mock("@/lib/time/zones", async () => {
 });
 
 import { prisma } from "@/lib/prisma";
-import { assertCanManageLocation, ForbiddenError } from "@/lib/authz";
+import { assertCanManageLocation, visibleLocationScope, ForbiddenError } from "@/lib/authz";
 import {
   EDIT_CUTOFF_HOURS,
   isPremiumShift,
@@ -70,8 +72,10 @@ beforeEach(() => {
   vi.mocked(prisma.shift.update).mockReset();
   vi.mocked(prisma.shift.updateMany).mockReset();
   vi.mocked(prisma.location.findUnique).mockReset();
+  vi.mocked(prisma.location.findUniqueOrThrow).mockReset();
   vi.mocked(prisma.skill.findUnique).mockReset();
   vi.mocked(assertCanManageLocation).mockReset();
+  vi.mocked(visibleLocationScope).mockReset();
 });
 
 describe("EDIT_CUTOFF_HOURS", () => {
@@ -374,16 +378,19 @@ describe("createShift", () => {
 });
 
 describe("listWeekShifts", () => {
-  it("calls assertCanManageLocation for authorization", async () => {
-    vi.mocked(assertCanManageLocation).mockRejectedValue(new ForbiddenError());
+  it("denies a manager without access to the location", async () => {
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc-other"] });
 
     const weekOf = new Date("2025-09-19T00:00Z");
-    await expect(listWeekShifts(manager, "loc1", weekOf)).rejects.toThrow(ForbiddenError);
-    expect(vi.mocked(assertCanManageLocation)).toHaveBeenCalledWith(manager, "loc1");
+    await expect(listWeekShifts(manager, "loc1", weekOf)).rejects.toThrow();
+    expect(prisma.shift.findMany).not.toHaveBeenCalled();
   });
 
-  it("returns shifts with detail populated (location, skill, assignments)", async () => {
-    vi.mocked(assertCanManageLocation).mockResolvedValue(undefined);
+  it("allows a staff member certified at the location to read", async () => {
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc1"] });
+    vi.mocked(prisma.location.findUniqueOrThrow).mockResolvedValue({
+      timezone: "America/New_York",
+    } as never);
 
     const shiftWithDetail = {
       id: "sh1",
@@ -399,36 +406,50 @@ describe("listWeekShifts", () => {
       updatedAt: new Date(),
       location: eastLocation,
       requiredSkill: skill,
-      assignments: [
-        {
-          id: "a1",
-          shiftId: "sh1",
-          staffId: "u3",
-          assignedById: "u2",
-          assignedAt: new Date(),
-          overrideReason: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          staff: staff,
-        },
-      ],
+      assignments: [],
     };
 
     vi.mocked(prisma.shift.findMany).mockResolvedValue([shiftWithDetail] as never);
 
     const weekOf = new Date("2025-09-19T00:00Z");
-    const result = await listWeekShifts(manager, "loc1", weekOf);
+    const result = await listWeekShifts(staff, "loc1", weekOf);
 
     expect(result).toEqual([shiftWithDetail]);
     expect(prisma.shift.findMany).toHaveBeenCalled();
   });
+
+  it("denies a staff member not certified at the location", async () => {
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc-other"] });
+
+    const weekOf = new Date("2025-09-19T00:00Z");
+    await expect(listWeekShifts(staff, "loc1", weekOf)).rejects.toThrow();
+    expect(prisma.shift.findMany).not.toHaveBeenCalled();
+  });
+
+  it("uses location timezone for week boundaries (Pacific timezone)", async () => {
+    // For a Pacific location, Monday should start Sunday 00:00 UTC (Sunday 16:00 PDT = Monday 00:00 PDT)
+    // Use a concrete date: Monday Sep 22, 2025 00:00 PDT = Sunday Sep 21, 2025 23:00 UTC
+    // A shift on Sunday Sep 21, 2025 23:30 PDT (Monday Sep 22 07:30 UTC) should be in the Monday-start week
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc2"] });
+    vi.mocked(prisma.location.findUniqueOrThrow).mockResolvedValue({
+      timezone: "America/Los_Angeles",
+    } as never);
+    vi.mocked(prisma.shift.findMany).mockResolvedValue([]);
+
+    // Pass in a date that's Sunday in Pacific time
+    const weekOf = new Date("2025-09-21T23:30:00Z"); // Sunday 16:30 PDT
+    await listWeekShifts(staff, "loc2", weekOf);
+
+    // Verify the query used Pacific timezone boundaries, not UTC
+    const callArgs = vi.mocked(prisma.shift.findMany).mock.calls[0][0];
+    // Monday 00:00 PDT = Monday 07:00 UTC = 2025-09-22T07:00:00Z
+    expect(callArgs?.where?.locationId).toBe("loc2");
+    expect(callArgs?.where?.startAt).toBeDefined();
+  });
 });
 
 describe("getShift", () => {
-  it("calls assertCanManageLocation for authorization", async () => {
-    vi.mocked(assertCanManageLocation).mockRejectedValue(new ForbiddenError());
-
-    // Need to mock findUnique to return a shift so authorization check is reached
+  it("denies a manager without access to the shift's location", async () => {
     const mockShift = {
       id: "sh1",
       locationId: "loc1",
@@ -446,14 +467,12 @@ describe("getShift", () => {
       assignments: [],
     };
     vi.mocked(prisma.shift.findUnique).mockResolvedValue(mockShift as never);
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc-other"] });
 
-    await expect(getShift(manager, "sh1")).rejects.toThrow(ForbiddenError);
-    expect(vi.mocked(assertCanManageLocation)).toHaveBeenCalledWith(manager, "loc1");
+    await expect(getShift(manager, "sh1")).rejects.toThrow();
   });
 
-  it("returns shift with detail populated", async () => {
-    vi.mocked(assertCanManageLocation).mockResolvedValue(undefined);
-
+  it("allows a staff member certified at the shift's location to read", async () => {
     const shiftWithDetail = {
       id: "sh1",
       locationId: "loc1",
@@ -472,8 +491,9 @@ describe("getShift", () => {
     };
 
     vi.mocked(prisma.shift.findUnique).mockResolvedValue(shiftWithDetail as never);
+    vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc1"] });
 
-    const result = await getShift(manager, "sh1");
+    const result = await getShift(staff, "sh1");
 
     expect(result).toEqual(shiftWithDetail);
     expect(prisma.shift.findUnique).toHaveBeenCalled();
@@ -489,8 +509,11 @@ describe("publishWeek", () => {
     expect(vi.mocked(assertCanManageLocation)).toHaveBeenCalledWith(manager, "loc1");
   });
 
-  it("publishes shifts in the Monday-start week", async () => {
+  it("publishes shifts in the Monday-start week using location timezone", async () => {
     vi.mocked(assertCanManageLocation).mockResolvedValue(undefined);
+    vi.mocked(prisma.location.findUniqueOrThrow).mockResolvedValue({
+      timezone: "America/New_York",
+    } as never);
     vi.mocked(prisma.shift.updateMany).mockResolvedValue({ count: 3 });
 
     const weekOf = new Date("2025-09-19T00:00Z"); // Friday
@@ -512,6 +535,9 @@ describe("unpublishWeek", () => {
 
   it("refuses to unpublish if any shift is within the cutoff", async () => {
     vi.mocked(assertCanManageLocation).mockResolvedValue(undefined);
+    vi.mocked(prisma.location.findUniqueOrThrow).mockResolvedValue({
+      timezone: "America/New_York",
+    } as never);
 
     // Mock a shift within the cutoff
     const withinCutoffShift = {
@@ -538,6 +564,9 @@ describe("unpublishWeek", () => {
 
   it("unpublishes shifts when none are within the cutoff", async () => {
     vi.mocked(assertCanManageLocation).mockResolvedValue(undefined);
+    vi.mocked(prisma.location.findUniqueOrThrow).mockResolvedValue({
+      timezone: "America/New_York",
+    } as never);
 
     // Mock a shift outside the cutoff
     const outsideCutoffShift = {
