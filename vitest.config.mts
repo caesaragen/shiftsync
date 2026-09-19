@@ -11,7 +11,14 @@ export default defineConfig({
     alias: { "@": `${__dirname}/src` },
   },
   test: {
+    // Default environment stays "node" so logic/unit tests (src/**/*.test.ts)
+    // remain fast. `environmentMatchGlobs` is not available in this Vitest
+    // version (removed from the config type in v5, superseded by
+    // `test.projects`) — component tests opt into jsdom individually via a
+    // `// @vitest-environment jsdom` docblock at the top of the file instead.
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    setupFiles: ["./vitest.setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+    server: { deps: { inline: [/next-auth/, /^next\//] } },
   },
 });

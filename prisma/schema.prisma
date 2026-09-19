@@ -29,4 +29,74 @@ model User {
   homeTimezone String   @default("America/New_York")
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  managerLocations ManagerLocation[]
+  staffSkills      StaffSkill[]
+  certifications   StaffLocationCertification[]
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String
+  address   String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  managers       ManagerLocation[]
+  certifications StaffLocationCertification[]
+}
+
+model Skill {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  staffSkills StaffSkill[]
+}
+
+model ManagerLocation {
+  id         String   @id @default(cuid())
+  managerId  String
+  locationId String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  manager  User     @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([managerId, locationId])
+}
+
+model StaffSkill {
+  id        String   @id @default(cuid())
+  staffId   String
+  skillId   String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  staff User  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, skillId])
+}
+
+// Certification *periods*, not a single row per (staff, location): a staff
+// member can be certified, de-certified, and re-certified at the same
+// location over time, and each period must be preserved (design spec §5
+// decision 1 — de-certification is a soft state change so history stays
+// auditable). There is deliberately NO @@unique([staffId, locationId]) — a
+// pair can have many rows across time, though at most one with endedAt:
+// null at once (enforced in application code, see certifyStaff). An index
+// still supports the "current certifications" lookups every read path does.
+model StaffLocationCertification {
+  id          String    @id @default(cuid())
+  staffId     String
+  locationId  String
+  certifiedAt DateTime  @default(now()) @db.Timestamptz(3)
+  endedAt     DateTime? @db.Timestamptz(3)
+
+  staff    User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, locationId])
 }
