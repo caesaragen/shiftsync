@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { checkEligibility } from "./eligibility";
 import { checkConflicts } from "./conflicts";
@@ -45,10 +46,20 @@ export function validateAssignment(ctx: EngineContext): ValidationResult {
  * - The candidate shift itself is EXCLUDED from existingAssignments (so we don't
  *   report a conflict with itself).
  * - Only ACTIVE certifications count (endedAt IS NULL).
+ *
+ * `client` defaults to the global `prisma` singleton so existing callers are
+ * unaffected, but callers that need read-your-writes consistency inside a
+ * transaction (e.g. `assignStaffToShift`) can pass the transaction client
+ * (`Prisma.TransactionClient`) so the context read and the eventual write
+ * happen against the SAME transaction/connection.
  */
-export async function loadContext(staffId: string, shiftId: string): Promise<EngineContext> {
+export async function loadContext(
+  staffId: string,
+  shiftId: string,
+  client: Prisma.TransactionClient = prisma,
+): Promise<EngineContext> {
   // Fetch the shift with its location, skill, and assignments
-  const shift = await prisma.shift.findUnique({
+  const shift = await client.shift.findUnique({
     where: { id: shiftId },
   });
 
@@ -65,18 +76,18 @@ export async function loadContext(staffId: string, shiftId: string): Promise<Eng
     availability,
     allAssignments,
   ] = await Promise.all([
-    prisma.user.findUnique({ where: { id: staffId } }),
-    prisma.location.findUnique({ where: { id: shift.locationId } }),
-    prisma.skill.findUnique({ where: { id: shift.requiredSkillId } }),
-    prisma.staffSkill.findMany({
+    client.user.findUnique({ where: { id: staffId } }),
+    client.location.findUnique({ where: { id: shift.locationId } }),
+    client.skill.findUnique({ where: { id: shift.requiredSkillId } }),
+    client.staffSkill.findMany({
       where: { staffId },
       include: { skill: true },
     }),
-    prisma.staffLocationCertification.findMany({
+    client.staffLocationCertification.findMany({
       where: { staffId, endedAt: null },
     }),
-    prisma.availability.findMany({ where: { staffId } }),
-    prisma.shiftAssignment.findMany({
+    client.availability.findMany({ where: { staffId } }),
+    client.shiftAssignment.findMany({
       where: { staffId },
       include: { shift: { include: { location: true } } },
     }),
