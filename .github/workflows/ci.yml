@@ -1,10 +1,15 @@
 name: CI
 
+# Manual-trigger only. GitHub Actions cannot run on this account at present, so
+# automatic push/PR triggers would mark every commit failed without ever having
+# executed a step. The pipeline below is the intended one: restore the `push`
+# and `pull_request` triggers, and add the DATABASE_URL / DIRECT_URL /
+# AUTH_SECRET repository secrets the build step reads, to turn it back on.
+#
+# Until then the same checks run locally: npm run lint && npm test &&
+# npm run build && npx tsc --noEmit
 on:
-  push:
-    branches: [develop, main]
-  pull_request:
-    branches: [develop, main]
+  workflow_dispatch:
 
 jobs:
   verify:
