@@ -13,7 +13,9 @@ import type { SessionUser } from "@/lib/authz";
  * scoping contract (see listStaffAssignments in staff-assignments.ts,
  * which DOES scope).
  */
-export async function listAllSkills(_user: SessionUser): Promise<Skill[]> {
+// `user` is intentionally unused — its required presence is the point (see doc comment above).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function listAllSkills(user: SessionUser): Promise<Skill[]> {
   return prisma.skill.findMany();
 }
 
