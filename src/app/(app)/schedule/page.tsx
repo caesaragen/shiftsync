@@ -57,7 +57,7 @@ async function ScheduleContent({
       <p className="mt-1 text-sm text-gray-500">Manage shifts for {selectedLocation.name}</p>
 
       {/* Controls */}
-      <div className="mt-8 flex flex-col gap-6 rounded-lg border border-border-subtle bg-surface p-5">
+      <div className="mt-8 flex flex-col gap-6 rounded-lg border border-border-subtle bg-surface p-5 shadow-sm">
         <form method="get" className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Location</span>
@@ -122,7 +122,7 @@ async function ScheduleContent({
       </div>
 
       {/* Create shift form */}
-      <div className="mt-8 rounded-lg border border-border-subtle bg-surface p-5">
+      <div className="mt-8 rounded-lg border border-border-subtle bg-surface p-5 shadow-sm">
         <h2 className="text-base font-semibold tracking-tight">Create a shift</h2>
         {shiftError && (
           <p role="alert" className="mt-3 text-sm text-red-600">
