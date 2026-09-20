@@ -80,43 +80,8 @@ test("manager creates a shift, sees a blocked assignment, makes a valid one, and
   // isn't enough.
   test.setTimeout(240_000);
 
-  // --- Fixture setup ----------------------------------------------------
-  // There is no "Create shift" control anywhere in the deployed UI:
-  // `createShiftAction` (src/app/(app)/schedule/actions.ts) is fully
-  // implemented and authorized, but is never referenced by any component --
-  // confirmed with `grep -rln "createShiftAction" src/app` (zero UI call
-  // sites). Task 3's own report says so explicitly (see
-  // .superpowers/sdd/2026-09-19-phase3-scheduling-ui/task-3-report.md,
-  // "Known Limitations": "The createShiftAction Server Action is
-  // implemented but not wired to a form on the page"), and Task 4 didn't
-  // add one either. So step 3 of this task's brief ("create a shift")
-  // genuinely cannot be driven through the browser -- there is nothing to
-  // click. That gap is reported in task-5-report.md rather than silently
-  // worked around: per this task's constraints, e2e tests must not modify
-  // any existing page/component to add the missing form.
-  //
-  // The fixture shift below is inserted directly via Prisma instead, the
-  // same way prisma/seed.ts creates its own shift fixtures. Everything
-  // downstream of this -- the shift appearing in the real week view, the
-  // real AssignmentPanel blocking/allowing real candidates, and the real
-  // "Publish week" button -- is exercised through the actual browser UI.
+  // --- Fixture setup: sign in and navigate to schedule ------------------
   const harborPoint = await prisma.location.findFirstOrThrow({ where: { name: "Harbor Point" } });
-  const serverSkill = await prisma.skill.findFirstOrThrow({ where: { name: "server" } });
-  const morgan = await prisma.user.findFirstOrThrow({ where: { email: MANAGER_MORGAN.email } });
-
-  const shift = await prisma.shift.create({
-    data: {
-      locationId: harborPoint.id,
-      startAt: SHIFT_START_UTC,
-      endAt: SHIFT_END_UTC,
-      requiredSkillId: serverSkill.id,
-      headcount: 1,
-      status: "DRAFT",
-      createdById: morgan.id,
-      notes: RUN_MARKER,
-    },
-  });
-  createdShiftId = shift.id;
 
   // --- 1. Sign in as the seeded manager who owns Harbor Point ------------
   await login(page, MANAGER_MORGAN.email, MANAGER_MORGAN.password);
@@ -131,10 +96,77 @@ test("manager creates a shift, sees a blocked assignment, makes a valid one, and
   await expect(page).toHaveURL(new RegExp(`locationId=${harborPoint.id}.*weekOf=${WEEK_OF}`));
   await expect(page.getByText("Manage shifts for Harbor Point")).toBeVisible();
 
-  // --- 3. The fixture shift really is there, in the real week grid -------
+  // --- 3. Create a shift via the real form --------------------------------
+  // The "Create a shift" form is now fully present in the UI, bound to
+  // createShiftAction (src/app/(app)/schedule/actions.ts), which successfully
+  // creates the shift and revalidates the page. The form requires startAt,
+  // endAt, and a non-blank requiredSkillId selection (the <select> has a
+  // blank placeholder option, so the test must explicitly choose a real skill).
+  //
+  // The datetime-local input sends times in the browser's local timezone.
+  // The browser will interpret "2027-06-07T HH:MM" as HH:MM in its local
+  // timezone, then send it to the server (createShiftAction), which does
+  // `new Date(string)` to parse it, also interpreting it as local time if
+  // no timezone is specified. The database then stores it as UTC.
+  //
+  // We want the database to have SHIFT_START_UTC (13:00 UTC) and SHIFT_END_UTC
+  // (17:00 UTC). If the browser is in offset O from UTC, we need to fill with
+  // (13:00 UTC + O hours) and (17:00 UTC + O hours) in local time.
+  //
+  // For example, in EDT (UTC-4): 13:00 UTC + 4 hours = 17:00 EDT → wait, that's backwards.
+  // Let me recalculate: 13:00 UTC is 09:00 EDT (UTC-4), so we fill "09:00".
+  // In EAT (UTC+3): 13:00 UTC is 16:00 EAT, so we fill "16:00".
+  //
+  // Since the browser's timezone offset varies, we calculate it on the fly.
+  // JavaScript's new Date("2027-06-07T HH:MM") interprets the string as local
+  // time and returns a Date object. We can then see what UTC time it represents.
+  // If filling "2027-06-07T13:00" results in 10:00 UTC, we know the offset is +3.
+  // So to get a date that will be 13:00 UTC when parsed locally, we fill with:
+  // (13:00 UTC + browser's UTC offset in hours) = local time to fill.
+  const testDate = new Date("2027-06-07T12:00"); // arbitrary test value
+  const testUTC = testDate.getUTCHours();
+  const testLocal = testDate.getHours();
+  const offsetHours = testLocal - testUTC; // e.g., EAT: 15 - 12 = +3
+
+  const startLocalHours = 13 + offsetHours; // 13:00 UTC + offset = local time
+  const endLocalHours = 17 + offsetHours; // 17:00 UTC + offset = local time
+
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const startLocal = `2027-06-07T${pad2(startLocalHours % 24)}:00`;
+  const endLocal = `2027-06-07T${pad2(endLocalHours % 24)}:00`;
+
+  await page.getByLabel("Start date & time").fill(startLocal);
+  await page.getByLabel("End date & time").fill(endLocal);
+  await page.getByLabel("Skill required").selectOption({ label: "server" });
+  await page.getByLabel("Notes").fill(RUN_MARKER);
+  await page.getByRole("button", { name: "Create shift", exact: true }).click();
+
+  // The form submission triggers a redirect via the Server Action. Wait for
+  // the page to navigate back to the schedule view.
+  await page.waitForURL(new RegExp(`locationId=${harborPoint.id}.*weekOf=${WEEK_OF}`));
+
+  // Occasionally, the revalidatePath call may not immediately reflect in the
+  // UI if Next.js caching hasn't settled. Refetch the page to ensure we have
+  // the latest shifts. This is still testing the form submission worked
+  // (if it failed, the redirect wouldn't have happened).
+  await page.reload();
+
+  // Now confirm the shift was created and appears in the week grid
   await expect(page.getByText("9:00 AM EDT")).toBeVisible();
 
-  // Open its detail page.
+  // Extract the shift ID from the database query after confirming it's there
+  // so cleanup can remove it (this test will clean up via afterEach).
+  const shift = await prisma.shift.findFirstOrThrow({
+    where: {
+      locationId: harborPoint.id,
+      startAt: SHIFT_START_UTC,
+      endAt: SHIFT_END_UTC,
+      notes: { contains: RUN_MARKER },
+    },
+  });
+  createdShiftId = shift.id;
+
+  // Open the shift's detail page for the assignment tests below
   await page.goto(`/schedule/${shift.id}`);
   await expect(page.getByText("Harbor Point")).toBeVisible();
 
@@ -199,26 +231,22 @@ test("manager creates a shift, sees a blocked assignment, makes a valid one, and
 
   // --- 6. Publish the week and confirm the shift's status changes --------
   await page.goto(`/schedule?locationId=${harborPoint.id}&weekOf=${WEEK_OF}`);
+
+  // Verify the DRAFT badge is visible before publishing
+  const shiftCard = page.locator("a").filter({ has: page.getByText("9:00 AM EDT") });
+  await expect(shiftCard.getByText("DRAFT")).toBeVisible();
+
+  // Click the "Publish week" button. The publishWeekAction Server Action
+  // (src/app/(app)/schedule/actions.ts) now calls revalidatePath("/schedule"),
+  // so the DRAFT status indicator disappears without needing a manual reload.
   await page.getByRole("button", { name: "Publish week", exact: true }).click();
-  // CONFIRMED BUG (see task-5-report.md): unlike `assignAction`/
-  // `unassignAction`, `publishWeekAction` (src/app/(app)/schedule/actions.ts)
-  // never calls `revalidatePath`, and submitting the plain `<form
-  // action={...}>` it's bound to does NOT trigger an automatic App Router
-  // refresh either -- verified directly: the database row flips to
-  // PUBLISHED within ~3s of the click, but the "DRAFT" badge on this exact
-  // page keeps showing the stale value indefinitely until something forces
-  // a fresh render. A manual reload is the only thing that picks up the
-  // change, so that's what a real manager would have to do too. Polls by
-  // reloading (a web-first assertion on an observable condition, not an
-  // arbitrary sleep) rather than assuming a single fixed delay is enough
-  // for the write to land.
-  await expect(async () => {
-    await page.reload();
-    await expect(page.getByText("DRAFT", { exact: true })).toHaveCount(0);
-  }).toPass({ timeout: 30_000 });
+
+  // Verify the DRAFT badge disappears from the published shift via a real
+  // assertion (not a sleep), scoped to the specific shift card
+  await expect(shiftCard.getByText("DRAFT")).toHaveCount(0);
 
   // Re-fetch the shift detail page fresh as an independent confirmation of
-  // real database state (not just this page's post-reload render).
+  // real database state (not just this page's post-revalidation render).
   await page.goto(`/schedule/${shift.id}`);
   const statusDd = page
     .locator("dl > div")
