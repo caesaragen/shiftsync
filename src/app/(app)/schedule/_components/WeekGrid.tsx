@@ -66,7 +66,12 @@ export function WeekGrid({
   const todayKey = localDateKey(new Date(), location.timezone);
 
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+    // A hardcoded 7-column grid has no room to breathe below ~700px --
+    // each day column collapsed to a sliver and forced the whole page to
+    // scroll horizontally on mobile. Stepping the column count down by
+    // breakpoint keeps every day readable at every width, at the cost of
+    // the full week only being visible "at a glance" at lg+ (1024px).
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
       {DAYS_OF_WEEK.map((day, dayIndex) => {
         const dayShifts = shiftsByDay[dayIndex];
         const dayDate = new Date(weekStart);

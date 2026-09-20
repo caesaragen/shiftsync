@@ -28,8 +28,8 @@ export default async function AdminLocationsPage({
         Coastal Eats restaurant locations and their timezones.
       </p>
 
-      <div className="mt-8 overflow-hidden rounded-lg border border-border-subtle bg-white shadow-sm">
-        <table className="w-full border-collapse text-sm">
+      <div className="mt-8 overflow-x-auto rounded-lg border border-border-subtle bg-white shadow-sm">
+        <table className="w-full min-w-120 border-collapse text-sm">
           <thead>
             <tr className="border-b border-border-subtle bg-surface text-left text-gray-500">
               <th className="px-4 py-2.5 font-medium">Name</th>
@@ -47,8 +47,10 @@ export default async function AdminLocationsPage({
             )}
             {locations.map((location) => (
               <tr key={location.id} className="border-b border-border-subtle last:border-0">
-                <td className="px-4 py-2.5 font-medium text-gray-900">{location.name}</td>
-                <td className="px-4 py-2.5">{location.timezone}</td>
+                <td className="px-4 py-2.5 font-medium whitespace-nowrap text-gray-900">
+                  {location.name}
+                </td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{location.timezone}</td>
                 <td className="px-4 py-2.5 text-gray-500">{location.address ?? "—"}</td>
               </tr>
             ))}
