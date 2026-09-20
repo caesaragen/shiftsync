@@ -7,6 +7,7 @@ import {
   weekBounds,
   addLocalDays,
   parseDateOnly,
+  parseLocalDateTime,
 } from "./zones";
 
 const NY = "America/New_York";
@@ -264,5 +265,40 @@ describe("parseDateOnly", () => {
     // Should be September 15, not 14
     expect(zonedEastern.month).toBe(9);
     expect(zonedEastern.day).toBe(15);
+  });
+});
+
+describe("parseLocalDateTime", () => {
+  // Regression test for a real, confirmed bug: `createShiftAction` used the
+  // bare `new Date(datetimeLocalString)` constructor, which for a
+  // date-TIME string with no timezone designator is parsed in the
+  // RUNTIME's own local system timezone -- not the location's. Submitting
+  // "2027-01-15T09:00" for a shift at Harbor Point (America/New_York)
+  // produced a stored startAt of 2027-01-15T06:00:00.000Z, which is 09:00
+  // interpreted as UTC+3 (the session's server timezone that day), not
+  // 09:00 Eastern. `parseLocalDateTime` must anchor the string to the
+  // TIMEZONE PASSED IN, regardless of what zone the process happens to be
+  // running in.
+
+  it("parses a datetime-local string as wall-clock time in an Eastern location, in January (EST, UTC-5)", () => {
+    // January is standard time in the US (no DST), so America/New_York is
+    // EST = UTC-5. 09:00 EST is 5 hours ahead in UTC: 14:00 UTC.
+    const result = parseLocalDateTime("2027-01-15T09:00", NY);
+    expect(result.toISOString()).toBe("2027-01-15T14:00:00.000Z");
+  });
+
+  it("parses a datetime-local string as wall-clock time in a Pacific location, in January (PST, UTC-8)", () => {
+    // Proves the fix isn't accidentally Eastern-only: America/Los_Angeles
+    // in January is PST = UTC-8. 09:00 PST is 8 hours ahead in UTC: 17:00 UTC.
+    const result = parseLocalDateTime("2027-01-15T09:00", LA);
+    expect(result.toISOString()).toBe("2027-01-15T17:00:00.000Z");
+  });
+
+  it("respects DST: the same wall-clock time in an Eastern location in July (EDT, UTC-4) yields a different UTC instant than in January", () => {
+    // Confirms the function reads the real offset for the given date rather
+    // than a fixed EST/EDT assumption -- July is daylight time, EDT = UTC-4.
+    // 09:00 EDT is 13:00 UTC, not 14:00 UTC as it would be under EST.
+    const result = parseLocalDateTime("2027-07-15T09:00", NY);
+    expect(result.toISOString()).toBe("2027-07-15T13:00:00.000Z");
   });
 });

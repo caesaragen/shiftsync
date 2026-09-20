@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { createShift, publishWeek, unpublishWeek } from "@/lib/shifts";
-import { parseDateOnly } from "@/lib/time/zones";
+import { parseDateOnly, parseLocalDateTime } from "@/lib/time/zones";
+import { prisma } from "@/lib/prisma";
 
 export async function createShiftAction(formData: FormData): Promise<void> {
   // Authorization first, before any validation or database work. Server
@@ -28,8 +29,20 @@ export async function createShiftAction(formData: FormData): Promise<void> {
     if (!requiredSkillId) throw new Error("Skill is required.");
     if (!headcountStr) throw new Error("Headcount is required.");
 
-    const startAt = new Date(startAtStr);
-    const endAt = new Date(endAtStr);
+    // The <input type="datetime-local"> values above carry no timezone
+    // designator, so they must be parsed as wall-clock time IN THE SHIFT'S
+    // OWN LOCATION -- never with the bare `new Date(string)` constructor,
+    // which would anchor them to whatever timezone this server process
+    // happens to be running in instead. See parseLocalDateTime's doc
+    // comment for the specific bug this guards against.
+    const location = await prisma.location.findUnique({
+      where: { id: locationId },
+      select: { timezone: true },
+    });
+    if (!location) throw new Error("Location not found.");
+
+    const startAt = parseLocalDateTime(startAtStr, location.timezone);
+    const endAt = parseLocalDateTime(endAtStr, location.timezone);
     const headcount = Number.parseInt(headcountStr, 10);
 
     if (Number.isNaN(startAt.getTime())) throw new Error("Invalid start time.");
