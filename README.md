@@ -4,6 +4,9 @@ Multi-location staff scheduling for a fictional restaurant group, "Coastal
 Eats" — Admins, Managers, and Staff collaborate on scheduling, swapping, and
 covering shifts across locations and time zones.
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the stack, data model, and a
+module-by-module explanation of how the system is built.
+
 ## Status
 
 **Phase 3 — scheduling UI complete**. A manager can now:
