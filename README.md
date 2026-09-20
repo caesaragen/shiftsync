@@ -6,20 +6,29 @@ covering shifts across locations and time zones.
 
 ## Status
 
-**Phase 2 — constraint engine complete**, on top of Phase 1's org model and
-Phase 0's foundation (Next.js App Router + TypeScript strict, Prisma against
-Postgres (Supabase), NextAuth v5 with Credentials + JWT sessions). This
-phase adds the scheduling data model (`Availability`, `Shift`,
-`ShiftAssignment`), a constraint engine (`validateAssignment`) that enforces
-eligibility, double-booking/rest-gap conflicts, and daily/weekly-hour +
-consecutive-day rules (see "Constraint engine" below for the full rule
-list), ranked alternative-staff suggestions (`suggestAlternatives`), and a
-concurrency-safe `assignStaffToShift` (Postgres `Serializable` transactions
-with retry, so two simultaneous assignments of the same person resolve to
-exactly one winner). `src/lib/constraints/scenarios.test.ts` exercises the
-assessment brief's six evaluation scenarios directly against this engine.
-Scheduling **UI** — the calendar, swap requests, and publish/unpublish —
-lands in Phase 3.
+**Phase 3 — scheduling UI complete**. A manager can now:
+
+- View a location's weekly schedule (scoped to locations they manage)
+- Create a shift (date, time, required skill, headcount)
+- Assign staff to a shift with real-time constraint feedback from Phase 2's engine
+  — the UI shows eligibility verdicts (allowed / warnings / blocked) with the
+  engine's violation messages rendered verbatim, and when blocked, suggests
+  alternative eligible staff ranked by fairness (fewest hours that week)
+- Publish or unpublish a week (with a 48-hour cutoff preventing edits to
+  published shifts within 48 hours of start)
+
+Underpinning all of this: Phase 2's constraint engine (`validateAssignment`,
+`suggestAlternatives`), which enforces eligibility, double-booking/rest-gap
+conflicts, and daily/weekly-hour + consecutive-day rules (see "Constraint
+engine" below for the full rule list). Phase 2's concurrency-safe
+`assignStaffToShift` (Postgres `Serializable` transactions with retry)
+ensures two simultaneous assignments of the same person resolve to exactly one
+winner. Phase 1's org model (locations, skills, staff, certifications, availability)
+and Phase 0's foundation (Next.js App Router + TypeScript strict, Prisma,
+NextAuth v5, Supabase) complete the stack.
+
+Swap requests, notifications, real-time updates, and fairness analytics remain
+Phase 4–5 work.
 
 ## Constraint engine
 
@@ -166,27 +175,53 @@ this phase**:
     premium-shift counts per staff member are already computable from
     today's data, ahead of that report.
 
+Phase 3 (the scheduling UI) locks in three more:
+
+1. **The week view is scoped per location** — a manager sees only one
+   location's week at a time, with a location picker limited to locations
+   they manage. A cross-location "everything" view is a Phase 5 analytics
+   concern, not a real-time scheduling surface.
+2. **Publishing is per location per week** — a bulk `DRAFT` → `PUBLISHED`
+   transition over all shifts in that location/week window. There is no
+   separate `Schedule` entity; the week-level action is computed from shifts
+   themselves. Unpublishing, likewise, works on the same scoped set.
+3. **The 48-hour cutoff blocks editing or unpublishing a `PUBLISHED` shift**
+   whose `startAt` is less than 48 hours away. Creating and editing `DRAFT`
+   shifts is always allowed. The cutoff is enforced in the data layer
+   (`src/lib/shifts.ts`, exported constant `EDIT_CUTOFF_HOURS`) and all UI
+   attempts that violate it surface a clear, specific error. A manager's
+   preview of who can be assigned always reflects the same constraint rules
+   the write path enforces, so the verdict shown and the verdict written can
+   never disagree.
+
 ## Known limitations
 
-- Login has no rate limiting yet. The demo accounts' passwords being public
-  is an acceptable risk for this take-home; rate limiting is planned but
-  not yet implemented.
-- Role is read once into the JWT at sign-in and is not revalidated on every
-  request; a role change (e.g. an admin demoting a manager) only takes
-  effect the next time that user signs in, not immediately. Revalidating on
-  every request would mean a DB read per request under the current
-  session strategy — deferred to Phase 2 as a deliberate trade-off, not an
-  oversight.
-- There is no separate test database: `npm run test:e2e` runs Playwright
-  against the same live demo database described above, using the seeded
-  accounts. Unit tests (`npm test`) mock Prisma and never touch the
-  database.
-- `User.homeTimezone` is set from a column default (`America/New_York`) at
-  creation rather than derived from the user's first certification's
-  location timezone, as the design spec describes. The seed data sets it
-  explicitly per user, so the demo data is correct; a real signup/admin
-  "create staff" flow would need to derive it.
-- CI's build step (`npm run build`, which needs `DATABASE_URL`,
-  `DIRECT_URL`, and `AUTH_SECRET` to run `prisma generate` against a real
-  schema and complete a Next.js production build) is red until those three
-  secrets are added to the repo's GitHub Actions configuration.
+- **Login rate limiting** — not yet implemented. The demo accounts' passwords
+  being public is an acceptable risk for this take-home evaluation.
+- **Role revalidation** — Role is read once into the JWT at sign-in and not
+  revalidated on every request; a role change (e.g. an admin demoting a
+  manager) only takes effect the next time that user signs in, not
+  immediately. Revalidating on every request would mean a DB read per
+  request under the current session strategy — deferred as a deliberate
+  trade-off.
+- **No separate test database** — `npm run test:e2e` runs Playwright against
+  the same live demo database, using the seeded accounts and self-cleaning
+  after each test. Unit tests (`npm test`) mock Prisma and never touch the
+  database. E2E now covers real scheduling workflows (create shift, assign
+  staff with constraint feedback, publish) end-to-end.
+- **Timezone derivation** — `User.homeTimezone` is set from a column default
+  (`America/New_York`) at creation rather than derived from the user's first
+  certification's location timezone. The seed data sets it explicitly per
+  user, so demo data is correct; a real signup/admin "create staff" flow
+  would need to derive it.
+- **CI configuration** — the build step (`npm run build`) needs `DATABASE_URL`,
+  `DIRECT_URL`, and `AUTH_SECRET` to complete. Manual trigger only due to
+  GitHub Actions billing lock on this account.
+- **Features not yet built** — swap/coverage workflows (Phase 4), real-time
+  notifications and live updates (Phase 4), overtime-cost dashboards and
+  fairness-analytics reporting UI (Phase 5). The constraint engine enforces
+  all the rules and the data supports analytics, but no report screen exists
+  yet.
+- **Orphaned test data** — a small number of seeded test-data rows in the
+  demo database remain from earlier test runs and await one-time manual
+  cleanup (not operationally blocking, but noted for cleanliness).
