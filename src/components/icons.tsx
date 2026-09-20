@@ -83,6 +83,21 @@ export function StaffIcon({ className = base }: IconProps) {
   );
 }
 
+export function ClockIcon({ className = base }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className={className}
+    >
+      <circle cx="10" cy="10" r="7.5" />
+      <path d="M10 6v4l2.8 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function BackIcon({ className = base }: IconProps) {
   return (
     <svg

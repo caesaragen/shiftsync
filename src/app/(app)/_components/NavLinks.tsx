@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Role } from "@prisma/client";
 import {
   DashboardIcon,
   CalendarIcon,
   LocationIcon,
   SkillIcon,
   StaffIcon,
+  ClockIcon,
 } from "@/components/icons";
 
 const navLinkClass =
@@ -25,9 +27,17 @@ const adminLinks = [
   { href: "/admin/staff", label: "Staff", icon: StaffIcon },
 ] as const;
 
-export function NavLinks({ isAdmin }: { readonly isAdmin: boolean }) {
+const staffLinks = [{ href: "/availability", label: "Availability", icon: ClockIcon }] as const;
+
+function linksForRole(role: Role) {
+  if (role === "ADMIN") return [...baseLinks, ...adminLinks];
+  if (role === "STAFF") return [...baseLinks, ...staffLinks];
+  return baseLinks;
+}
+
+export function NavLinks({ role }: { readonly role: Role }) {
   const pathname = usePathname();
-  const links = isAdmin ? [...baseLinks, ...adminLinks] : baseLinks;
+  const links = linksForRole(role);
 
   return (
     <>

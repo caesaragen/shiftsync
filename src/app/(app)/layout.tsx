@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
               ShiftSync
             </Link>
-            <NavLinks isAdmin={user.role === "ADMIN"} />
+            <NavLinks role={user.role} />
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="text-gray-600">
