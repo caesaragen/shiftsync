@@ -48,7 +48,7 @@ export default async function AdminStaffPage({
 
       {staff.length === 0 && <p className="mt-8 text-sm text-gray-500">No staff members yet.</p>}
 
-      <ul className="mt-8 flex flex-col gap-10">
+      <ul className="mt-8 flex flex-col gap-4">
         {staff.map((member) => {
           const assignedSkillIds = new Set(member.skills.map((s) => s.id));
           const availableSkills = skills.filter((s) => !assignedSkillIds.has(s.id));
@@ -56,11 +56,30 @@ export default async function AdminStaffPage({
             member.certifications.filter((c) => c.endedAt === null).map((c) => c.locationId),
           );
           const availableLocations = locations.filter((l) => !certifiedLocationIds.has(l.id));
+          const initials = member.name
+            .split(" ")
+            .map((part) => part[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase();
 
           return (
-            <li key={member.id} className="border-b pb-8 last:border-0">
-              <h2 className="text-base font-semibold tracking-tight">{member.name}</h2>
-              <p className="text-sm text-gray-500">{member.email}</p>
+            <li
+              key={member.id}
+              className="rounded-lg border border-border-subtle bg-white p-5 shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-subtle text-sm font-semibold text-accent"
+                >
+                  {initials}
+                </span>
+                <div>
+                  <h2 className="text-base font-semibold tracking-tight">{member.name}</h2>
+                  <p className="text-sm text-gray-500">{member.email}</p>
+                </div>
+              </div>
 
               <div className="mt-4 grid gap-8 sm:grid-cols-2">
                 <section>

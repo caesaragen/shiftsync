@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/authz";
 import { getShift, type ShiftWithDetail } from "@/lib/shifts";
 import { prisma } from "@/lib/prisma";
 import { loadContext, validateAssignment } from "@/lib/constraints/engine";
 import { formatInstantClock, zoneAbbrev } from "@/lib/time/format";
-import { toZoned } from "@/lib/time/zones";
+import { toZoned, weekBounds, localDateKey } from "@/lib/time/zones";
+import { BackIcon } from "@/components/icons";
 import {
   AssignmentPanel,
   type CandidateVerdict,
@@ -67,7 +69,14 @@ export default async function ShiftDetailPage({
   } catch (error) {
     return (
       <main className="mx-auto max-w-6xl px-6 py-12">
-        <p role="alert" className="text-sm text-red-600">
+        <Link
+          href="/schedule"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-900"
+        >
+          <BackIcon className="h-4 w-4" />
+          Back to Schedule
+        </Link>
+        <p role="alert" className="mt-4 text-sm text-red-600">
           {error instanceof Error ? error.message : "This shift could not be loaded."}
         </p>
       </main>
@@ -92,9 +101,23 @@ export default async function ShiftDetailPage({
   const canManage = user.role === "MANAGER" || user.role === "ADMIN";
   const candidates = canManage ? await loadCandidateVerdicts(shift) : [];
 
+  // Return to the week this shift actually belongs to, not just the
+  // schedule page's own defaults -- otherwise "back" would silently drop
+  // the manager into a different location/week than the one they came from.
+  const { start: weekStart } = weekBounds(shift.startAt, timezone);
+  const weekOfStr = localDateKey(weekStart, timezone);
+  const backHref = `/schedule?locationId=${shift.locationId}&weekOf=${weekOfStr}`;
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
-      <p className="text-sm text-gray-500">{shift.location.name}</p>
+      <Link
+        href={backHref}
+        className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-900"
+      >
+        <BackIcon className="h-4 w-4" />
+        Back to Schedule
+      </Link>
+      <p className="mt-4 text-sm text-gray-500">{shift.location.name}</p>
       <h1 className="mt-1 text-xl font-semibold tracking-tight">
         {startClock}–{endClock} {zone}
         {isOvernight && " (next day)"}

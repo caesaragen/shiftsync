@@ -6,7 +6,7 @@ export function ScheduleSkeleton() {
       <Skeleton className="h-6 w-32" />
       <Skeleton className="mt-2 h-4 w-56" />
 
-      <div className="mt-8 flex flex-col gap-6 rounded-lg border border-border-subtle bg-surface p-5">
+      <div className="mt-8 flex flex-col gap-6 rounded-lg border border-border-subtle bg-surface p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <Skeleton className="h-10 w-40" />
           <Skeleton className="h-10 w-40" />
@@ -18,7 +18,7 @@ export function ScheduleSkeleton() {
         </div>
       </div>
 
-      <div className="mt-8 rounded-lg border border-border-subtle bg-surface p-5">
+      <div className="mt-8 rounded-lg border border-border-subtle bg-surface p-5 shadow-sm">
         <Skeleton className="h-5 w-32" />
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Skeleton className="h-10" />

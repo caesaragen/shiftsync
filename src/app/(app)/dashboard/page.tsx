@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser, type SessionUser } from "@/lib/authz";
 import { listLocations } from "@/lib/locations";
 import { listAllSkills } from "@/lib/skills";
@@ -8,8 +9,10 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
-      <p>Signed in as {user.name}</p>
-      <p className="text-sm text-gray-500">{user.role}</p>
+      <p className="text-lg font-semibold tracking-tight">Signed in as {user.name}</p>
+      <span className="mt-1 inline-block rounded-full bg-accent-subtle px-2.5 py-0.5 text-xs font-medium text-accent">
+        {user.role}
+      </span>
 
       <div className="mt-10">
         {user.role === "ADMIN" && <AdminOverview user={user} />}
@@ -28,9 +31,9 @@ async function AdminOverview({ user }: { user: SessionUser }) {
   ]);
 
   const stats = [
-    { label: "Locations", count: locations.length },
-    { label: "Skills", count: skills.length },
-    { label: "Staff", count: staff.length },
+    { label: "Locations", count: locations.length, href: "/admin/locations" },
+    { label: "Skills", count: skills.length, href: "/admin/skills" },
+    { label: "Staff", count: staff.length, href: "/admin/staff" },
   ];
 
   return (
@@ -38,10 +41,14 @@ async function AdminOverview({ user }: { user: SessionUser }) {
       <h2 className="text-sm font-medium text-gray-700">Organization overview</h2>
       <dl className="mt-3 grid grid-cols-3 gap-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded border px-4 py-3">
+          <Link
+            key={stat.label}
+            href={stat.href}
+            className="rounded-lg border border-border-subtle bg-white px-4 py-3 shadow-sm transition-colors hover:border-accent hover:bg-accent-subtle"
+          >
             <dt className="text-xs text-gray-500">{stat.label}</dt>
             <dd className="mt-1 text-xl font-semibold tracking-tight">{stat.count}</dd>
-          </div>
+          </Link>
         ))}
       </dl>
     </section>
@@ -66,9 +73,14 @@ async function ManagerOverview({ user }: { user: SessionUser }) {
       ) : (
         <ul className="mt-3 flex flex-col gap-2 text-sm">
           {locations.map((location) => (
-            <li key={location.id} className="rounded border px-4 py-3">
-              <span className="font-medium">{location.name}</span>
-              <span className="text-gray-500"> — {location.timezone}</span>
+            <li key={location.id}>
+              <Link
+                href={`/schedule?locationId=${location.id}`}
+                className="block rounded-lg border border-border-subtle bg-white px-4 py-3 shadow-sm transition-colors hover:border-accent hover:bg-accent-subtle"
+              >
+                <span className="font-medium">{location.name}</span>
+                <span className="text-gray-500"> — {location.timezone}</span>
+              </Link>
             </li>
           ))}
         </ul>
@@ -94,7 +106,10 @@ async function StaffOverview({ user }: { user: SessionUser }) {
         ) : (
           <ul className="mt-3 flex flex-col gap-2 text-sm">
             {activeCertifications.map((cert) => (
-              <li key={cert.id} className="rounded border px-4 py-3">
+              <li
+                key={cert.id}
+                className="rounded-lg border border-border-subtle bg-white px-4 py-3 shadow-sm"
+              >
                 {cert.locationName}
               </li>
             ))}
@@ -109,7 +124,7 @@ async function StaffOverview({ user }: { user: SessionUser }) {
         ) : (
           <ul className="mt-3 flex flex-wrap gap-2 text-sm">
             {skills.map((skill) => (
-              <li key={skill.id} className="rounded-full border px-3 py-1">
+              <li key={skill.id} className="rounded-full bg-accent-subtle px-3 py-1 text-accent">
                 {skill.name}
               </li>
             ))}

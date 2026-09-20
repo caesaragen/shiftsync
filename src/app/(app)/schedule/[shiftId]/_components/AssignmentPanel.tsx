@@ -169,7 +169,7 @@ export function AssignmentPanel({
             {roster.map((entry) => (
               <li
                 key={entry.assignmentId}
-                className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-lg border border-border-subtle bg-white px-3 py-2.5 text-sm shadow-sm"
               >
                 <span>{entry.name}</span>
                 <button
@@ -199,8 +199,10 @@ export function AssignmentPanel({
               {sortedCandidates.map((candidate) => (
                 <label
                   key={candidate.staffId}
-                  className={`flex cursor-pointer items-center justify-between rounded border px-3 py-2 text-sm ${
-                    selectedStaffId === candidate.staffId ? "border-accent" : "border-gray-300"
+                  className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 text-sm shadow-sm transition-colors ${
+                    selectedStaffId === candidate.staffId
+                      ? "border-accent bg-accent-subtle"
+                      : "border-border-subtle bg-white hover:border-gray-300"
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -230,7 +232,7 @@ export function AssignmentPanel({
             )}
 
             {selectedCandidate && !selectedCandidate.allowed && (
-              <div className="rounded border border-gray-200 p-3 text-sm">
+              <div className="rounded-lg border border-border-subtle bg-surface p-3 text-sm">
                 <p className="font-medium text-gray-700">Suggested alternatives</p>
                 {suggestionsLoading && (
                   <p className="mt-1 text-gray-500">Looking for alternatives…</p>

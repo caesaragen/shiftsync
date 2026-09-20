@@ -34,34 +34,42 @@ export function ShiftCard({ shift }: { readonly shift: ShiftWithDetail }) {
           isDraft ? "border-border-subtle bg-surface" : "border-border-subtle bg-white"
         } ${isUnderstaffed ? "ring-1 ring-red-300" : ""}`}
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <div className="font-medium text-gray-900">
-              {startTime} {startZone}
-            </div>
-            <div className="text-xs text-gray-500">
-              to {endTimeDisplay}
-              {endDayLabel}
-            </div>
-          </div>
-          <div className="text-right">
+        <div className="font-medium text-gray-900">
+          {startTime} {startZone}
+        </div>
+        <div className="text-xs text-gray-500">
+          to {endTimeDisplay}
+          {endDayLabel}
+        </div>
+
+        {/* Badges get their own wrapping row below the time -- a shared row
+            with the time text caused it to wrap awkwardly at the week
+            grid's narrow (7-column) card width. */}
+        {(isDraft || isPremium) && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
             {isDraft && (
-              <div className="inline-block rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-700">
+              <span className="inline-block rounded bg-gray-200 px-1.5 py-0.5 text-[11px] font-medium text-gray-700">
                 DRAFT
-              </div>
+              </span>
             )}
             {isPremium && (
-              <div className="mt-1 inline-block rounded bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
+              <span className="inline-block rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] font-medium text-yellow-800">
                 Premium
-              </div>
+              </span>
             )}
           </div>
-        </div>
+        )}
+
         <div className="mt-2 flex items-center justify-between text-xs">
-          <div className="text-gray-600">{shift.requiredSkill.name}</div>
-          <div className={`font-medium ${isUnderstaffed ? "text-red-600" : "text-green-600"}`}>
-            {assignedCount}/{shift.headcount} assigned
-          </div>
+          <span className="text-gray-600">{shift.requiredSkill.name}</span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-medium ${
+              isUnderstaffed ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+            }`}
+            aria-label={`${assignedCount} of ${shift.headcount} assigned`}
+          >
+            {assignedCount}/{shift.headcount}
+          </span>
         </div>
       </div>
     </Link>
