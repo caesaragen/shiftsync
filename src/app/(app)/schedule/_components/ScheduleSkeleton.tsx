@@ -30,7 +30,7 @@ export function ScheduleSkeleton() {
         <Skeleton className="mt-4 h-9 w-32" />
       </div>
 
-      <div className="mt-8 grid gap-3" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
         {Array.from({ length: 7 }).map((_, i) => (
           <div
             key={i}
