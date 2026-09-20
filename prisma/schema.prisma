@@ -20,6 +20,30 @@ enum Role {
   STAFF
 }
 
+enum SwapType {
+  SWAP
+  DROP
+}
+
+enum SwapStatus {
+  PENDING_TARGET
+  PENDING_MANAGER
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum NotificationType {
+  SWAP_REQUESTED
+  SWAP_ACCEPTED
+  SWAP_APPROVED
+  SWAP_REJECTED
+  SWAP_CANCELLED
+  SWAP_EXPIRED
+  DROP_PICKED_UP
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -30,13 +54,17 @@ model User {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
-  managerLocations ManagerLocation[]
-  staffSkills      StaffSkill[]
-  certifications   StaffLocationCertification[]
-  availability     Availability[]
-  shiftsCreated    Shift[]           @relation("ShiftCreatedBy")
-  assignments      ShiftAssignment[] @relation("AssignmentStaff")
-  assignmentsMade  ShiftAssignment[] @relation("AssignmentAssignedBy")
+  managerLocations     ManagerLocation[]
+  staffSkills          StaffSkill[]
+  certifications       StaffLocationCertification[]
+  availability         Availability[]
+  shiftsCreated        Shift[]           @relation("ShiftCreatedBy")
+  assignments          ShiftAssignment[] @relation("AssignmentStaff")
+  assignmentsMade      ShiftAssignment[] @relation("AssignmentAssignedBy")
+  swapRequestsMade     SwapRequest[]     @relation("SwapRequester")
+  swapRequestsTargeted SwapRequest[]     @relation("SwapTarget")
+  notifications        Notification[]
+  auditLogEntries      AuditLog[]
 }
 
 model Location {
@@ -170,10 +198,63 @@ model ShiftAssignment {
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @db.Timestamptz(3)
 
-  shift      Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  staff      User  @relation("AssignmentStaff", fields: [staffId], references: [id], onDelete: Cascade)
-  assignedBy User  @relation("AssignmentAssignedBy", fields: [assignedById], references: [id])
+  shift        Shift        @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  staff        User         @relation("AssignmentStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  assignedBy   User         @relation("AssignmentAssignedBy", fields: [assignedById], references: [id])
+  swapRequests SwapRequest[]
 
   @@unique([shiftId, staffId])
   @@index([staffId, shiftId])
+}
+
+model SwapRequest {
+  id                 String     @id @default(cuid())
+  shiftAssignmentId  String
+  requestingStaffId  String
+  type               SwapType
+  targetStaffId      String?
+  status             SwapStatus @default(PENDING_TARGET)
+  createdAt          DateTime   @default(now()) @db.Timestamptz(3)
+  respondedAt        DateTime?  @db.Timestamptz(3)
+  expiresAt          DateTime?  @db.Timestamptz(3)
+  cancelReason       String?
+
+  shiftAssignment ShiftAssignment @relation(fields: [shiftAssignmentId], references: [id], onDelete: Cascade)
+  requestingStaff User            @relation("SwapRequester", fields: [requestingStaffId], references: [id], onDelete: Cascade)
+  targetStaff     User?           @relation("SwapTarget", fields: [targetStaffId], references: [id], onDelete: Cascade)
+
+  @@index([shiftAssignmentId, status])
+  @@index([requestingStaffId, status])
+  @@index([targetStaffId, status])
+}
+
+model Notification {
+  id                String           @id @default(cuid())
+  userId            String
+  type              NotificationType
+  message           String
+  relatedEntityType String
+  relatedEntityId   String
+  isRead            Boolean          @default(false)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  entityType String
+  entityId   String
+  action     String
+  beforeJson Json?
+  afterJson  Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
 }
