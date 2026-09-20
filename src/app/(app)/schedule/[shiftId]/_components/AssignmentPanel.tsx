@@ -19,6 +19,8 @@ export type CandidateVerdict = {
   allowed: boolean;
   requiresOverride: boolean;
   violations: Violation[];
+  /** Their actual hours on the shift's date, e.g. "10:00 AM–10:00 PM EDT" or "Not scheduled to work this day". */
+  availabilityText: string;
 };
 
 function candidateStatusLabel(candidate: CandidateVerdict): string {
@@ -199,7 +201,7 @@ export function AssignmentPanel({
               {sortedCandidates.map((candidate) => (
                 <label
                   key={candidate.staffId}
-                  className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 text-sm shadow-sm transition-colors ${
+                  className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-sm shadow-sm transition-colors ${
                     selectedStaffId === candidate.staffId
                       ? "border-accent bg-accent-subtle"
                       : "border-border-subtle bg-white hover:border-gray-300"
@@ -213,9 +215,12 @@ export function AssignmentPanel({
                       checked={selectedStaffId === candidate.staffId}
                       onChange={() => handleSelect(candidate.staffId)}
                     />
-                    {candidate.name}
+                    <span className="flex flex-col">
+                      {candidate.name}
+                      <span className="text-xs text-gray-500">{candidate.availabilityText}</span>
+                    </span>
                   </span>
-                  <span className={`font-medium ${candidateStatusClassName(candidate)}`}>
+                  <span className={`shrink-0 font-medium ${candidateStatusClassName(candidate)}`}>
                     {candidateStatusLabel(candidate)}
                   </span>
                 </label>
