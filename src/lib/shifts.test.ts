@@ -427,24 +427,28 @@ describe("listWeekShifts", () => {
   });
 
   it("uses location timezone for week boundaries (Pacific timezone)", async () => {
-    // For a Pacific location, Monday should start Sunday 00:00 UTC (Sunday 16:00 PDT = Monday 00:00 PDT)
-    // Use a concrete date: Monday Sep 22, 2025 00:00 PDT = Sunday Sep 21, 2025 23:00 UTC
-    // A shift on Sunday Sep 21, 2025 23:30 PDT (Monday Sep 22 07:30 UTC) should be in the Monday-start week
+    // For America/Los_Angeles (PDT, UTC-7):
+    // Friday Sep 19, 2025 00:00 UTC is Thursday 17:00 PDT
+    // The Monday-start week is Monday Sep 15 to Monday Sep 22
+    // Monday Sep 15, 2025 00:00 PDT = 2025-09-15T07:00:00Z (UTC)
+    // Monday Sep 22, 2025 00:00 PDT = 2025-09-22T07:00:00Z (UTC)
+    // With buggy UTC hardcoding: start would be Sep 15 00:00 UTC (wrong day boundary)
+    // With correct Pacific timezone: start is Sep 15 07:00 UTC (correct)
     vi.mocked(visibleLocationScope).mockResolvedValue({ scope: "ids", ids: ["loc2"] });
     vi.mocked(prisma.location.findUniqueOrThrow).mockResolvedValue({
       timezone: "America/Los_Angeles",
     } as never);
     vi.mocked(prisma.shift.findMany).mockResolvedValue([]);
 
-    // Pass in a date that's Sunday in Pacific time
-    const weekOf = new Date("2025-09-21T23:30:00Z"); // Sunday 16:30 PDT
+    const weekOf = new Date("2025-09-19T00:00:00Z"); // Friday (Thu 17:00 PDT)
     await listWeekShifts(staff, "loc2", weekOf);
 
-    // Verify the query used Pacific timezone boundaries, not UTC
+    // Assert exact boundaries computed in Pacific timezone
     const callArgs = vi.mocked(prisma.shift.findMany).mock.calls[0][0];
-    // Monday 00:00 PDT = Monday 07:00 UTC = 2025-09-22T07:00:00Z
     expect(callArgs?.where?.locationId).toBe("loc2");
-    expect(callArgs?.where?.startAt).toBeDefined();
+    const startAtFilter = callArgs?.where?.startAt as { gte?: Date; lt?: Date } | undefined;
+    expect(startAtFilter?.gte).toEqual(new Date("2025-09-15T07:00:00Z")); // Mon 00:00 PDT
+    expect(startAtFilter?.lt).toEqual(new Date("2025-09-22T07:00:00Z")); // Next Mon 00:00 PDT
   });
 });
 
