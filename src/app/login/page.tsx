@@ -1,6 +1,8 @@
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
+import { SubmitButton } from "@/components/SubmitButton";
+import { FlashToast } from "@/components/toast/FlashToast";
 
 async function login(formData: FormData) {
   "use server";
@@ -27,6 +29,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-surface px-6">
+      <FlashToast error={error === "invalid" ? "Invalid email or password." : undefined} />
       <form
         action={login}
         className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-border-subtle bg-white p-8 shadow-sm"
@@ -65,12 +68,12 @@ export default async function LoginPage({
             className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
           />
         </label>
-        <button
-          type="submit"
-          className="mt-2 rounded bg-accent px-3 py-2 text-white hover:bg-accent-hover"
+        <SubmitButton
+          pendingText="Signing in…"
+          className="mt-2 rounded bg-accent px-3 py-2 text-white hover:bg-accent-hover disabled:opacity-70"
         >
           Sign in
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

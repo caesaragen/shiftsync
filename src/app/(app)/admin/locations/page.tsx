@@ -1,6 +1,8 @@
 import { requireRole } from "@/lib/authz";
 import { listLocations } from "@/lib/locations";
 import { createLocationAction } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
+import { FlashToast } from "@/components/toast/FlashToast";
 
 const TIMEZONES = [
   "America/New_York",
@@ -12,14 +14,15 @@ const TIMEZONES = [
 export default async function AdminLocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  readonly searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const user = await requireRole("ADMIN");
-  const { error } = await searchParams;
+  const { error, success } = await searchParams;
   const locations = await listLocations(user);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
+      <FlashToast error={error} success={success} />
       <h1 className="text-xl font-semibold tracking-tight">Locations</h1>
       <p className="mt-1 text-sm text-gray-500">
         Coastal Eats restaurant locations and their timezones.
@@ -93,9 +96,12 @@ export default async function AdminLocationsPage({
             className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
           />
         </label>
-        <button type="submit" className="rounded bg-accent px-3 py-2 text-white">
+        <SubmitButton
+          pendingText="Adding…"
+          className="rounded bg-accent px-3 py-2 text-white hover:bg-accent-hover disabled:opacity-70"
+        >
           Add location
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );
