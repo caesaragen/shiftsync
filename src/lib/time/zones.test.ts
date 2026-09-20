@@ -232,8 +232,8 @@ describe("parseDateOnly", () => {
   });
 
   it("ensures week-boundary calculation is correct for an Eastern location", () => {
-    // Sep 14, 2026 is a Sunday. The correct week should be Sep 14 (Monday) through Sep 20 (Sunday).
-    // With the bug (UTC midnight), Sep 13 (Saturday) falls on the previous week.
+    // Sep 14, 2026 is a Monday. The correct week should be Sep 14 (Monday) through Sep 20 (Sunday).
+    // With the bug (UTC midnight), the date rolls back to Sep 13 (Sunday), which falls in the previous week.
     const date = parseDateOnly("2026-09-14");
     const { start } = weekBounds(date, NY);
     const startZoned = toZoned(start, NY);
