@@ -27,8 +27,20 @@ winner. Phase 1's org model (locations, skills, staff, certifications, availabil
 and Phase 0's foundation (Next.js App Router + TypeScript strict, Prisma,
 NextAuth v5, Supabase) complete the stack.
 
-Swap requests, notifications, real-time updates, and fairness analytics remain
-Phase 4–5 work.
+**Phase 4 — swap/notification/audit infrastructure (schema + data layer
+only, no UI yet)**. `SwapRequest`, `Notification`, and `AuditLog` models
+are live, with a tested `writeAuditLog`/`notify`/`listNotifications`/
+`markRead` data layer following the same transaction-client pattern as
+Phase 2's `assignStaffToShift` — but no swap/drop request can currently be
+made through the UI, and no notification is currently triggered by
+anything. This was stopped deliberately partway through, ahead of the
+deadline, to prioritize documentation and production polish over shipping
+a half-built UI. `docs/superpowers/plans/2026-09-20-phase4-swap-workflow.md`
+has the full 10-task plan, including the 3 completed tasks and the 7
+remaining ones (the staff/manager UI, the swap state machine's edge cases,
+and E2E coverage).
+
+Real-time updates and fairness-analytics reporting remain unbuilt.
 
 ## Constraint engine
 
@@ -217,11 +229,14 @@ Phase 3 (the scheduling UI) locks in three more:
 - **CI configuration** — the build step (`npm run build`) needs `DATABASE_URL`,
   `DIRECT_URL`, and `AUTH_SECRET` to complete. Manual trigger only due to
   GitHub Actions billing lock on this account.
-- **Features not yet built** — swap/coverage workflows (Phase 4), real-time
-  notifications and live updates (Phase 4), overtime-cost dashboards and
-  fairness-analytics reporting UI (Phase 5). The constraint engine enforces
-  all the rules and the data supports analytics, but no report screen exists
-  yet.
-- **Orphaned test data** — a small number of seeded test-data rows in the
-  demo database remain from earlier test runs and await one-time manual
-  cleanup (not operationally blocking, but noted for cleanliness).
+- **Features not yet built** — the swap/drop/coverage workflow has its
+  schema and data layer (`SwapRequest`, `Notification`, `AuditLog`,
+  `src/lib/swaps.ts`'s planned state machine) but no UI, no notification
+  triggers, and no real-time delivery yet; overtime-cost dashboards and
+  fairness-analytics reporting UI (Phase 5) also don't exist. The
+  constraint engine enforces all the rules and the data supports both,
+  but neither has a report/interaction screen yet.
+- **No background job runner** — the plan for drop-request expiry (24
+  hours before the shift, unclaimed) is lazy/read-time evaluation rather
+  than a cron job, since this project has no scheduled-task infrastructure.
+  Not yet implemented (Phase 4 stopped before the swap state machine).
