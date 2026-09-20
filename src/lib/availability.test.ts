@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Availability } from "@prisma/client";
-import { isStaffAvailable } from "./availability";
+import { isStaffAvailable, describeAvailabilityForDate } from "./availability";
 
 const NY = "America/New_York";
 const LA = "America/Los_Angeles";
@@ -174,5 +174,55 @@ describe("isStaffAvailable", () => {
     expect(result.reason).toMatch(/5:00\s*PM/i);
     expect(result.reason).toMatch(/12:00\s*PM/i);
     expect(result.reason).toMatch(/8:00\s*PM/i);
+  });
+});
+
+describe("describeAvailabilityForDate", () => {
+  it("reports the merged windows for a date with a recurring row, independent of any shift", () => {
+    // Mon 2026-06-15 in NY; dayOfWeek 1 = Monday
+    const rows = [
+      row({ kind: "RECURRING", dayOfWeek: 1, startMinutes: 10 * 60, endMinutes: 22 * 60 }),
+    ];
+    const monday = new Date("2026-06-15T15:00:00Z"); // any instant that lands on Monday in NY
+    const text = describeAvailabilityForDate(rows, monday, NY);
+    expect(text).toMatch(/10:00\s*AM/i);
+    expect(text).toMatch(/10:00\s*PM/i);
+    expect(text).toMatch(/EDT/);
+  });
+
+  it("reports 'not scheduled' for a date with no matching window", () => {
+    const rows = [
+      row({ kind: "RECURRING", dayOfWeek: 1, startMinutes: 10 * 60, endMinutes: 22 * 60 }),
+    ];
+    const tuesday = new Date("2026-06-16T15:00:00Z"); // dayOfWeek 2 -- no row for it
+    const text = describeAvailabilityForDate(rows, tuesday, NY);
+    expect(text).toBe("Not scheduled to work this day");
+  });
+
+  it("an EXCEPTION row for the date overrides the RECURRING row entirely", () => {
+    const rows = [
+      row({ kind: "RECURRING", dayOfWeek: 1, startMinutes: 10 * 60, endMinutes: 22 * 60 }),
+      row({
+        kind: "EXCEPTION",
+        date: new Date("2026-06-15T00:00:00Z"),
+        startMinutes: 6 * 60,
+        endMinutes: 9 * 60,
+      }),
+    ];
+    const monday = new Date("2026-06-15T15:00:00Z");
+    const text = describeAvailabilityForDate(rows, monday, NY);
+    expect(text).toMatch(/6:00\s*AM/i);
+    expect(text).toMatch(/9:00\s*AM/i);
+    expect(text).not.toMatch(/10:00\s*AM/i);
+  });
+
+  it("merges two windows on the same date with 'and'", () => {
+    const rows = [
+      row({ kind: "RECURRING", dayOfWeek: 1, startMinutes: 8 * 60, endMinutes: 11 * 60 }),
+      row({ kind: "RECURRING", dayOfWeek: 1, startMinutes: 14 * 60, endMinutes: 18 * 60 }),
+    ];
+    const monday = new Date("2026-06-15T15:00:00Z");
+    const text = describeAvailabilityForDate(rows, monday, NY);
+    expect(text).toMatch(/8:00\s*AM.*11:00\s*AM.*and.*2:00\s*PM.*6:00\s*PM/i);
   });
 });

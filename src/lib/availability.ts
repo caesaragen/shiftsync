@@ -145,3 +145,29 @@ export function isStaffAvailable(
     reason: `available ${windowsText} ${zoneLabel}, but this shift runs ${shiftRangeText}.`,
   };
 }
+
+/**
+ * A human-readable summary of `rows`' availability windows on the local
+ * calendar date `instant` falls on in `homeTimeZone` -- independent of any
+ * particular shift's hours, unlike `isStaffAvailable` (which only reports a
+ * reason when a specific shift DOESN'T fit). Lets a caller show a manager
+ * what a candidate's actual hours are that day, not just whether they
+ * happen to cover the one shift being considered right now.
+ */
+export function describeAvailabilityForDate(
+  rows: Availability[],
+  instant: Date,
+  homeTimeZone: string,
+): string {
+  const dateKey = localDateKey(instant, homeTimeZone);
+  const weekday = toZoned(instant, homeTimeZone).weekday;
+  const merged = mergeIntervals(availableIntervalsForDate(rows, dateKey, weekday, 0));
+
+  if (merged.length === 0) {
+    return "Not scheduled to work this day";
+  }
+
+  const zoneLabel = zoneAbbrev(instant, homeTimeZone);
+  const windowsText = merged.map((iv) => formatRange(iv.start, iv.end)).join(" and ");
+  return `${windowsText} ${zoneLabel}`;
+}

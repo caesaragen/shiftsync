@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/authz";
 import { getShift, type ShiftWithDetail } from "@/lib/shifts";
 import { prisma } from "@/lib/prisma";
 import { loadContext, validateAssignment } from "@/lib/constraints/engine";
+import { describeAvailabilityForDate } from "@/lib/availability";
 import { formatInstantClock, zoneAbbrev } from "@/lib/time/format";
 import { toZoned, weekBounds, localDateKey } from "@/lib/time/zones";
 import { BackIcon } from "@/components/icons";
@@ -49,6 +50,14 @@ async function loadCandidateVerdicts(shift: ShiftWithDetail): Promise<CandidateV
       allowed: result.allowed,
       requiresOverride: result.requiresOverride,
       violations: result.violations,
+      // Their actual hours on the shift's date, shown up front rather than
+      // only surfacing (as part of a longer sentence) once a manager
+      // selects a candidate who happens to be blocked on UNAVAILABLE.
+      availabilityText: describeAvailabilityForDate(
+        ctx.availability,
+        shift.startAt,
+        ctx.staff.homeTimezone,
+      ),
     });
   }
 
