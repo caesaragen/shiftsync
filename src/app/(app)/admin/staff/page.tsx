@@ -31,7 +31,7 @@ export default async function AdminStaffPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-6xl px-6 py-12">
       <h1 className="text-xl font-semibold tracking-tight">Staff</h1>
       <p className="mt-1 text-sm text-gray-500">
         Skills and location certifications for staff members.
@@ -96,7 +96,7 @@ export default async function AdminStaffPage({
                         name="skillId"
                         required
                         defaultValue=""
-                        className="rounded border px-2 py-1 outline-none focus:ring-2 focus:ring-black"
+                        className="rounded border px-2 py-1 outline-none focus:ring-2 focus:ring-accent"
                       >
                         <option value="" disabled>
                           Add a skill…
@@ -107,7 +107,7 @@ export default async function AdminStaffPage({
                           </option>
                         ))}
                       </select>
-                      <button type="submit" className="rounded bg-black px-2 py-1 text-white">
+                      <button type="submit" className="rounded bg-accent px-2 py-1 text-white">
                         Add
                       </button>
                     </form>
@@ -163,7 +163,7 @@ export default async function AdminStaffPage({
                         name="locationId"
                         required
                         defaultValue=""
-                        className="rounded border px-2 py-1 outline-none focus:ring-2 focus:ring-black"
+                        className="rounded border px-2 py-1 outline-none focus:ring-2 focus:ring-accent"
                       >
                         <option value="" disabled>
                           Certify at…
@@ -174,7 +174,7 @@ export default async function AdminStaffPage({
                           </option>
                         ))}
                       </select>
-                      <button type="submit" className="rounded bg-black px-2 py-1 text-white">
+                      <button type="submit" className="rounded bg-accent px-2 py-1 text-white">
                         Certify
                       </button>
                     </form>

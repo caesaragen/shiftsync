@@ -7,7 +7,7 @@ export default async function DashboardPage() {
   const user = await requireUser();
 
   return (
-    <main className="mx-auto mt-16 max-w-2xl px-6">
+    <main className="mx-auto max-w-6xl px-6 py-12">
       <p>Signed in as {user.name}</p>
       <p className="text-sm text-gray-500">{user.role}</p>
 

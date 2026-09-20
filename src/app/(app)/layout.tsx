@@ -3,32 +3,47 @@ import { requireUser } from "@/lib/authz";
 import { SignOutButton } from "@/components/SignOutButton";
 import { signOutAction } from "./actions";
 
+const navLinkClass =
+  "text-gray-600 transition-colors hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-sm";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
 
   return (
     <>
-      <header className="border-b">
-        <nav className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+      <header className="border-b border-border-subtle bg-white/80 backdrop-blur-sm supports-backdrop-filter:bg-white/60 sticky top-0 z-10">
+        <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <div className="flex flex-wrap items-center gap-6 text-sm">
-            <Link href="/dashboard" className="font-semibold tracking-tight">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 font-semibold tracking-tight text-gray-900"
+            >
+              <span
+                aria-hidden
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-xs font-bold text-white"
+              >
+                S
+              </span>
               ShiftSync
             </Link>
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
+            <Link href="/dashboard" className={navLinkClass}>
               Dashboard
+            </Link>
+            <Link href="/schedule" className={navLinkClass}>
+              Schedule
             </Link>
             {/* Hiding these links is presentation only, never access control —
                 each admin page and Server Action still calls requireRole("ADMIN")
                 itself regardless of what the nav shows. */}
             {user.role === "ADMIN" && (
               <>
-                <Link href="/admin/locations" className="text-gray-600 hover:text-gray-900">
+                <Link href="/admin/locations" className={navLinkClass}>
                   Locations
                 </Link>
-                <Link href="/admin/skills" className="text-gray-600 hover:text-gray-900">
+                <Link href="/admin/skills" className={navLinkClass}>
                   Skills
                 </Link>
-                <Link href="/admin/staff" className="text-gray-600 hover:text-gray-900">
+                <Link href="/admin/staff" className={navLinkClass}>
                   Staff
                 </Link>
               </>
@@ -36,7 +51,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="text-gray-600">
-              {user.name} · {user.role}
+              {user.name} <span className="text-gray-300">·</span>{" "}
+              <span className="font-medium text-gray-900">{user.role}</span>
             </span>
             <SignOutButton onSignOut={signOutAction} />
           </div>

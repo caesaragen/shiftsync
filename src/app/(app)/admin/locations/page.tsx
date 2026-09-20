@@ -19,7 +19,7 @@ export default async function AdminLocationsPage({
   const locations = await listLocations(user);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-6xl px-6 py-12">
       <h1 className="text-xl font-semibold tracking-tight">Locations</h1>
       <p className="mt-1 text-sm text-gray-500">
         Coastal Eats restaurant locations and their timezones.
@@ -64,7 +64,7 @@ export default async function AdminLocationsPage({
             name="name"
             type="text"
             required
-            className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+            className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -73,7 +73,7 @@ export default async function AdminLocationsPage({
             name="timezone"
             required
             defaultValue=""
-            className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+            className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
           >
             <option value="" disabled>
               Select a timezone
@@ -90,10 +90,10 @@ export default async function AdminLocationsPage({
           <input
             name="address"
             type="text"
-            className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+            className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
           />
         </label>
-        <button type="submit" className="rounded bg-black px-3 py-2 text-white">
+        <button type="submit" className="rounded bg-accent px-3 py-2 text-white">
           Add location
         </button>
       </form>

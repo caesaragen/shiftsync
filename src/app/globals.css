@@ -2,12 +2,27 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+  /* A single restrained accent (indigo) carries all primary actions and
+   * focus/active states — one color, used consistently, reads as
+   * intentional; scattering black/gray/indigo across pages does not. */
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-subtle: #eef2ff;
+  /* A faint off-white distinguishes a "card"/"surface" from the page
+   * background without needing a shadow to do all the work. */
+  --surface: #f8fafc;
+  --border-subtle: #e2e8f0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-surface: var(--surface);
+  --color-border-subtle: var(--border-subtle);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -24,4 +39,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Native checkbox/radio fill and the date/time picker's own icon both read
+ * this — a genuine CSS property, not a Tailwind utility, so it's set once
+ * here rather than per-input. Keeps the one accent color consistent even
+ * where a utility class can't reach. */
+input,
+select {
+  accent-color: var(--accent);
 }

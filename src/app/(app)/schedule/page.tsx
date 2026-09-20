@@ -51,14 +51,14 @@ async function ScheduleContent({
       <p className="mt-1 text-sm text-gray-500">Manage shifts for {selectedLocation.name}</p>
 
       {/* Controls */}
-      <div className="mt-8 flex flex-col gap-6 rounded border bg-gray-50 p-4">
+      <div className="mt-8 flex flex-col gap-6 rounded-lg border border-border-subtle bg-surface p-5">
         <form method="get" className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Location</span>
             <select
               name="locationId"
               defaultValue={selectedLocation.id}
-              className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+              className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
             >
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
@@ -73,12 +73,12 @@ async function ScheduleContent({
               type="date"
               name="weekOf"
               defaultValue={weekOfStr}
-              className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+              className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
             />
           </label>
           <button
             type="submit"
-            className="rounded bg-gray-300 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-400"
+            className="rounded border border-border-subtle bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
           >
             Load
           </button>
@@ -94,7 +94,7 @@ async function ScheduleContent({
           >
             <button
               type="submit"
-              className="rounded bg-black px-3 py-2 text-sm text-white hover:bg-gray-800"
+              className="rounded bg-accent px-3 py-2 text-sm text-white hover:bg-accent-hover"
             >
               Publish week
             </button>
@@ -107,7 +107,7 @@ async function ScheduleContent({
           >
             <button
               type="submit"
-              className="rounded border px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              className="rounded border border-border-subtle bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
               Unpublish week
             </button>
@@ -116,7 +116,7 @@ async function ScheduleContent({
       </div>
 
       {/* Create shift form */}
-      <div className="mt-8 rounded border bg-gray-50 p-4">
+      <div className="mt-8 rounded-lg border border-border-subtle bg-surface p-5">
         <h2 className="text-base font-semibold tracking-tight">Create a shift</h2>
         {shiftError && (
           <p role="alert" className="mt-3 text-sm text-red-600">
@@ -133,7 +133,7 @@ async function ScheduleContent({
                 name="startAt"
                 type="datetime-local"
                 required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -142,7 +142,7 @@ async function ScheduleContent({
                 name="endAt"
                 type="datetime-local"
                 required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
               />
             </label>
           </div>
@@ -153,7 +153,7 @@ async function ScheduleContent({
               <select
                 name="requiredSkillId"
                 required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
               >
                 <option value="">Select a skill</option>
                 {skills.map((skill) => (
@@ -171,7 +171,7 @@ async function ScheduleContent({
                 min="1"
                 defaultValue="1"
                 required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
               />
             </label>
           </div>
@@ -180,13 +180,13 @@ async function ScheduleContent({
             <span className="font-medium">Notes</span>
             <textarea
               name="notes"
-              className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+              className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
             />
           </label>
 
           <button
             type="submit"
-            className="self-start rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            className="self-start rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
           >
             Create shift
           </button>
