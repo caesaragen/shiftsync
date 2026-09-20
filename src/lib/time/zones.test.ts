@@ -6,6 +6,7 @@ import {
   minutesSinceLocalMidnight,
   weekBounds,
   addLocalDays,
+  parseDateOnly,
 } from "./zones";
 
 const NY = "America/New_York";
@@ -215,5 +216,53 @@ describe("addLocalDays", () => {
     // Confirm this genuinely crossed the transition: real elapsed time is 49h, not 48h.
     const startZoned = DateTime.fromJSDate(start, { zone: NY });
     expect(zoned.diff(startZoned, "hours").hours).toBe(49);
+  });
+});
+
+describe("parseDateOnly", () => {
+  it("parses a bare date string as noon UTC, ensuring the local date is correct for US zones", () => {
+    // Test case: "2026-09-14" parsed as UTC midnight would be 2026-09-13T20:00 EDT (Sep 13, previous day)
+    // Parsed as noon UTC should be 2026-09-14T08:00 EDT (Sep 14, same day)
+    const date = parseDateOnly("2026-09-14");
+    const zonedEastern = toZoned(date, NY);
+
+    // Should be September 14, not 13
+    expect(zonedEastern.month).toBe(9);
+    expect(zonedEastern.day).toBe(14);
+  });
+
+  it("ensures week-boundary calculation is correct for an Eastern location", () => {
+    // Sep 14, 2026 is a Sunday. The correct week should be Sep 14 (Monday) through Sep 20 (Sunday).
+    // With the bug (UTC midnight), Sep 13 (Saturday) falls on the previous week.
+    const date = parseDateOnly("2026-09-14");
+    const { start } = weekBounds(date, NY);
+    const startZoned = toZoned(start, NY);
+
+    // Should be the Monday of Sep 14's week
+    expect(startZoned.month).toBe(9);
+    expect(startZoned.day).toBe(14);
+    expect(startZoned.weekday).toBe(1); // 1 = Monday
+  });
+
+  it("ensures week-boundary calculation is correct for a Pacific location", () => {
+    // Same date, different timezone
+    const date = parseDateOnly("2026-09-14");
+    const { start } = weekBounds(date, LA);
+    const startZoned = toZoned(start, LA);
+
+    // Should be the Monday of Sep 14's week
+    expect(startZoned.month).toBe(9);
+    expect(startZoned.day).toBe(14);
+    expect(startZoned.weekday).toBe(1); // 1 = Monday
+  });
+
+  it("handles a date that is not a Sunday/Saturday boundary case", () => {
+    // Test with a Tuesday to ensure the fix isn't only correct for Sunday
+    const date = parseDateOnly("2026-09-15");
+    const zonedEastern = toZoned(date, NY);
+
+    // Should be September 15, not 14
+    expect(zonedEastern.month).toBe(9);
+    expect(zonedEastern.day).toBe(15);
   });
 });

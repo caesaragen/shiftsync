@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { requireUser } from "@/lib/authz";
 import { listLocations } from "@/lib/locations";
 import { listWeekShifts } from "@/lib/shifts";
-import { weekBounds } from "@/lib/time/zones";
+import { weekBounds, parseDateOnly } from "@/lib/time/zones";
 import { WeekGrid } from "./_components/WeekGrid";
 import { publishWeekAction, unpublishWeekAction } from "./actions";
 
@@ -25,14 +25,8 @@ async function ScheduleContent({
     );
   }
 
-  const weekOf = new Date(weekOfStr);
-  if (Number.isNaN(weekOf.getTime())) {
-    return (
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <p className="text-red-600">Invalid week date.</p>
-      </div>
-    );
-  }
+  const weekOf = parseDateOnly(weekOfStr);
+  const { start: weekStart } = weekBounds(weekOf, selectedLocation.timezone);
 
   const shifts = await listWeekShifts(user, selectedLocation.id, weekOf);
 
@@ -108,7 +102,7 @@ async function ScheduleContent({
 
       {/* Week grid */}
       <div className="mt-8">
-        <WeekGrid shifts={shifts} location={selectedLocation} weekOf={weekOf} />
+        <WeekGrid shifts={shifts} location={selectedLocation} weekStart={weekStart} />
       </div>
     </main>
   );

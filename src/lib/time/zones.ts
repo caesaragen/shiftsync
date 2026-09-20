@@ -8,6 +8,23 @@ import { DateTime } from "luxon";
  * assume a fixed offset and break on DST transition days.
  */
 
+/**
+ * Parse a bare "YYYY-MM-DD" string safely as a calendar date, not as UTC midnight.
+ *
+ * JavaScript's `new Date("YYYY-MM-DD")` interprets the string as UTC midnight
+ * (e.g., "2026-09-14" → 2026-09-14T00:00:00.000Z). For timezones behind UTC
+ * (all US zones), this instant falls on the *previous* calendar day locally
+ * (e.g., EDT is UTC-4, so UTC midnight becomes the previous day 8 PM). This
+ * breaks week-boundary and day-boundary calculations.
+ *
+ * This function anchors to noon UTC instead, which is safe for all real-world
+ * zones this app uses (US zones are UTC-4 to UTC-8): noon UTC cannot cross
+ * into a different local day for offsets within +/-12 hours.
+ */
+export function parseDateOnly(dateStr: string): Date {
+  return new Date(`${dateStr}T12:00:00.000Z`);
+}
+
 export function toZoned(instant: Date, timeZone: string): DateTime {
   return DateTime.fromJSDate(instant, { zone: timeZone });
 }

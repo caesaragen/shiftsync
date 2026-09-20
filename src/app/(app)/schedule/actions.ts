@@ -2,6 +2,7 @@
 
 import { requireRole } from "@/lib/authz";
 import { createShift, publishWeek, unpublishWeek } from "@/lib/shifts";
+import { parseDateOnly } from "@/lib/time/zones";
 
 export async function createShiftAction(formData: FormData): Promise<{ shiftId: string }> {
   // Authorization first, before any validation or database work. Server
@@ -51,11 +52,7 @@ export async function publishWeekAction(
   // Authorization first
   const user = await requireRole("MANAGER", "ADMIN");
 
-  const weekOfDate = new Date(weekOf);
-  if (Number.isNaN(weekOfDate.getTime())) {
-    throw new Error("Invalid week date.");
-  }
-
+  const weekOfDate = parseDateOnly(weekOf);
   const result = await publishWeek(user, locationId, weekOfDate);
   return result;
 }
@@ -67,10 +64,7 @@ export async function unpublishWeekAction(
   // Authorization first
   const user = await requireRole("MANAGER", "ADMIN");
 
-  const weekOfDate = new Date(weekOf);
-  if (Number.isNaN(weekOfDate.getTime())) {
-    throw new Error("Invalid week date.");
-  }
+  const weekOfDate = parseDateOnly(weekOf);
 
   try {
     const result = await unpublishWeek(user, locationId, weekOfDate);

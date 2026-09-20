@@ -13,17 +13,12 @@ const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "S
 export function WeekGrid({
   shifts,
   location,
-  weekOf,
+  weekStart,
 }: {
-  shifts: ShiftWithDetail[];
-  location: Location;
-  weekOf: Date;
+  readonly shifts: ShiftWithDetail[];
+  readonly location: Location;
+  readonly weekStart: Date;
 }) {
-  // Get the start of the week (Monday) in the location's timezone
-  const weekStartZoned = toZoned(weekOf, location.timezone);
-  const daysFromMonday = weekStartZoned.weekday - 1; // Luxon weekday: 1=Mon .. 7=Sun
-  const weekStartDate = weekStartZoned.startOf("day").minus({ days: daysFromMonday }).toJSDate();
-
   // Build a map of shifts by the local calendar day they start on
   const shiftsByDay: Record<number, ShiftWithDetail[]> = {};
   for (let i = 0; i < 7; i++) {
@@ -37,7 +32,7 @@ export function WeekGrid({
     // Find which day index (0=Monday, 6=Sunday) this shift starts on
     let dayIndex = -1;
     for (let i = 0; i < 7; i++) {
-      const dayStart = new Date(weekStartDate);
+      const dayStart = new Date(weekStart);
       dayStart.setDate(dayStart.getDate() + i);
       if (
         startDate.getFullYear() === dayStart.getFullYear() &&
@@ -63,7 +58,7 @@ export function WeekGrid({
     <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
       {DAYS_OF_WEEK.map((day, dayIndex) => {
         const dayShifts = shiftsByDay[dayIndex];
-        const dayDate = new Date(weekStartDate);
+        const dayDate = new Date(weekStart);
         dayDate.setDate(dayDate.getDate() + dayIndex);
         const dateStr = dayDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
