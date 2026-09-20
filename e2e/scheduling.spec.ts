@@ -255,17 +255,12 @@ test("a manager cannot open the schedule or a shift for a location they do not m
   );
   await expect(page.getByRole("heading", { name: "Roster" })).toHaveCount(0);
 
-  // The week view takes a DIFFERENT path: `SchedulePage`
-  // (src/app/(app)/schedule/page.tsx) silently substitutes a location the
-  // requesting manager actually manages whenever the requested `locationId`
-  // isn't in their own `listLocations()` result -- there is no "not
-  // found"/"access denied" state on this page at all. Confirmed by reading
-  // the component (it falls back to `locations[0]?.id` rather than
-  // rendering an error), and asserted on here as the real behavior rather
-  // than the brief's hoped-for "redirected or shown a clear no-access
-  // state".
+  // The week view now shows an access-denied error when the manager
+  // requests a location they don't manage, consistent with the shift detail
+  // page. This is rendered as a `<p role="alert">` with the same message.
   await page.goto(`/schedule?locationId=${pier39.id}&weekOf=${WEEK_OF}`);
-  await expect(page.getByRole("heading", { name: "Schedule" })).toBeVisible();
-  await expect(page.getByText("Manage shifts for Pier 39")).toHaveCount(0);
-  await expect(page.getByText(/Manage shifts for (Harbor Point|Bayside)/)).toBeVisible();
+  await expect(page.locator('p[role="alert"]')).toHaveText(
+    "You do not have access to this resource.",
+  );
+  await expect(page.getByRole("heading", { name: "Schedule" })).toHaveCount(0);
 });

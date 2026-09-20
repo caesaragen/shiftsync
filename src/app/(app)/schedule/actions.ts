@@ -1,10 +1,12 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/authz";
 import { createShift, publishWeek, unpublishWeek } from "@/lib/shifts";
 import { parseDateOnly } from "@/lib/time/zones";
 
-export async function createShiftAction(formData: FormData): Promise<{ shiftId: string }> {
+export async function createShiftAction(formData: FormData): Promise<void> {
   // Authorization first, before any validation or database work. Server
   // Actions are publicly callable HTTP endpoints regardless of what the UI
   // renders, so this must not be skippable by calling the action directly.
@@ -19,56 +21,58 @@ export async function createShiftAction(formData: FormData): Promise<{ shiftId: 
   const headcountStr = String((formData.get("headcount") as string | null) ?? "").trim();
   const notes = String((formData.get("notes") as string | null) ?? "").trim();
 
-  if (!locationId) throw new Error("Location is required.");
-  if (!startAtStr) throw new Error("Start time is required.");
-  if (!endAtStr) throw new Error("End time is required.");
-  if (!requiredSkillId) throw new Error("Skill is required.");
-  if (!headcountStr) throw new Error("Headcount is required.");
+  try {
+    if (!locationId) throw new Error("Location is required.");
+    if (!startAtStr) throw new Error("Start time is required.");
+    if (!endAtStr) throw new Error("End time is required.");
+    if (!requiredSkillId) throw new Error("Skill is required.");
+    if (!headcountStr) throw new Error("Headcount is required.");
 
-  const startAt = new Date(startAtStr);
-  const endAt = new Date(endAtStr);
-  const headcount = Number.parseInt(headcountStr, 10);
+    const startAt = new Date(startAtStr);
+    const endAt = new Date(endAtStr);
+    const headcount = Number.parseInt(headcountStr, 10);
 
-  if (Number.isNaN(startAt.getTime())) throw new Error("Invalid start time.");
-  if (Number.isNaN(endAt.getTime())) throw new Error("Invalid end time.");
-  if (Number.isNaN(headcount)) throw new Error("Invalid headcount.");
+    if (Number.isNaN(startAt.getTime())) throw new Error("Invalid start time.");
+    if (Number.isNaN(endAt.getTime())) throw new Error("Invalid end time.");
+    if (Number.isNaN(headcount)) throw new Error("Invalid headcount.");
 
-  const shift = await createShift(user, {
-    locationId,
-    startAt,
-    endAt,
-    requiredSkillId,
-    headcount,
-    notes: notes || undefined,
-  });
+    await createShift(user, {
+      locationId,
+      startAt,
+      endAt,
+      requiredSkillId,
+      headcount,
+      notes: notes || undefined,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not create shift.";
+    redirect(
+      `/schedule?locationId=${encodeURIComponent(locationId || "")}&shiftError=${encodeURIComponent(message)}`,
+    );
+  }
 
-  return { shiftId: shift.id };
+  revalidatePath("/schedule");
+  redirect(`/schedule?locationId=${encodeURIComponent(locationId)}`);
 }
 
-export async function publishWeekAction(
-  locationId: string,
-  weekOf: string,
-): Promise<{ count: number }> {
+export async function publishWeekAction(locationId: string, weekOf: string): Promise<void> {
   // Authorization first
   const user = await requireRole("MANAGER", "ADMIN");
 
   const weekOfDate = parseDateOnly(weekOf);
-  const result = await publishWeek(user, locationId, weekOfDate);
-  return result;
+  await publishWeek(user, locationId, weekOfDate);
+
+  revalidatePath("/schedule");
 }
 
-export async function unpublishWeekAction(
-  locationId: string,
-  weekOf: string,
-): Promise<{ count: number }> {
+export async function unpublishWeekAction(locationId: string, weekOf: string): Promise<void> {
   // Authorization first
   const user = await requireRole("MANAGER", "ADMIN");
 
   const weekOfDate = parseDateOnly(weekOf);
 
   try {
-    const result = await unpublishWeek(user, locationId, weekOfDate);
-    return result;
+    await unpublishWeek(user, locationId, weekOfDate);
   } catch (error) {
     // Surface the specific cutoff message if that's the error
     if (error instanceof Error && error.message.includes("48-hour edit cutoff")) {
@@ -76,4 +80,6 @@ export async function unpublishWeekAction(
     }
     throw error;
   }
+
+  revalidatePath("/schedule");
 }
