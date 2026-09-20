@@ -623,7 +623,11 @@ describe("checkHours", () => {
       const v = violations.find((x) => x.rule === "SEVENTH_CONSECUTIVE_DAY");
       expect(v?.message).toContain("Riley");
       expect(v?.message).toContain("7");
-      expect(v?.message).toContain("Jun 21");
+      // 2026-06-21 is a Sunday. Pinning the weekday explicitly (not just the
+      // day-of-month) guards formatDateString's `timeZone: "UTC"` -- without
+      // it, a runtime behind UTC would roll this back to "Sat, Jun 20",
+      // wrong on both counts.
+      expect(v?.message).toContain("Sun, Jun 21");
     });
   });
 
