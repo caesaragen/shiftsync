@@ -193,7 +193,7 @@ export function AssignmentPanel({
                 <label
                   key={candidate.staffId}
                   className={`flex cursor-pointer items-center justify-between rounded border px-3 py-2 text-sm ${
-                    selectedStaffId === candidate.staffId ? "border-black" : "border-gray-300"
+                    selectedStaffId === candidate.staffId ? "border-accent" : "border-gray-300"
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -253,7 +253,7 @@ export function AssignmentPanel({
                   onChange={(e) => setOverrideReason(e.target.value)}
                   required
                   rows={2}
-                  className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                  className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
                 />
               </label>
             )}
@@ -292,7 +292,7 @@ export function AssignmentPanel({
             <button
               type="submit"
               disabled={!selectedCandidate || isPending}
-              className="w-fit rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+              className="w-fit rounded bg-accent px-3 py-2 text-sm text-white disabled:opacity-50"
             >
               {isPending ? "Assigning…" : "Assign"}
             </button>

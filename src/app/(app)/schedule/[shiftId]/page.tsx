@@ -66,7 +66,7 @@ export default async function ShiftDetailPage({
     shift = await getShift(user, shiftId);
   } catch (error) {
     return (
-      <main className="mx-auto max-w-4xl px-6 py-12">
+      <main className="mx-auto max-w-6xl px-6 py-12">
         <p role="alert" className="text-sm text-red-600">
           {error instanceof Error ? error.message : "This shift could not be loaded."}
         </p>
@@ -93,7 +93,7 @@ export default async function ShiftDetailPage({
   const candidates = canManage ? await loadCandidateVerdicts(shift) : [];
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-6xl px-6 py-12">
       <p className="text-sm text-gray-500">{shift.location.name}</p>
       <h1 className="mt-1 text-xl font-semibold tracking-tight">
         {startClock}–{endClock} {zone}

@@ -30,8 +30,8 @@ export function ShiftCard({ shift }: { readonly shift: ShiftWithDetail }) {
   return (
     <Link href={`/schedule/${shift.id}`}>
       <div
-        className={`rounded border p-3 text-sm transition-colors hover:bg-gray-50 ${
-          isDraft ? "border-gray-300 bg-gray-50" : "border-gray-300 bg-white"
+        className={`rounded border p-3 text-sm transition-colors hover:border-accent hover:bg-accent-subtle ${
+          isDraft ? "border-border-subtle bg-surface" : "border-border-subtle bg-white"
         } ${isUnderstaffed ? "ring-1 ring-red-300" : ""}`}
       >
         <div className="flex items-start justify-between gap-2">

@@ -9,6 +9,15 @@ export type ShiftWithDetail = Shift & {
 };
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_ABBREV: Record<string, string> = {
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun",
+};
 
 export function WeekGrid({
   shifts,
@@ -55,7 +64,7 @@ export function WeekGrid({
   });
 
   return (
-    <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+    <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
       {DAYS_OF_WEEK.map((day, dayIndex) => {
         const dayShifts = shiftsByDay[dayIndex];
         const dayDate = new Date(weekStart);
@@ -63,14 +72,20 @@ export function WeekGrid({
         const dateStr = dayDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
         return (
-          <div key={dayIndex} className="flex flex-col gap-2 rounded border p-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">{day}</h3>
+          <div
+            key={dayIndex}
+            className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-3"
+          >
+            <div
+              className="flex items-center justify-between border-b border-border-subtle pb-2"
+              title={day}
+            >
+              <h3 className="text-sm font-semibold text-gray-900">{DAY_ABBREV[day]}</h3>
               <span className="text-xs text-gray-500">{dateStr}</span>
             </div>
             <div className="flex flex-col gap-2">
               {dayShifts.length === 0 ? (
-                <p className="text-xs text-gray-400">No shifts</p>
+                <p className="py-2 text-xs text-gray-400">No shifts</p>
               ) : (
                 dayShifts.map((shift) => <ShiftCard key={shift.id} shift={shift} />)
               )}
