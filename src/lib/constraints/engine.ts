@@ -12,6 +12,49 @@ export type ValidationResult = {
 };
 
 /**
+ * How far, in days, either side of the candidate shift's `startAt` the
+ * assignment-history query reaches. Chosen deliberately wide -- a too-narrow
+ * window silently under-reports violations, which is far worse than fetching
+ * a few extra rows.
+ *
+ * Worst case this needs to cover, entirely in the STAFF MEMBER's local
+ * calendar:
+ * - The Monday-start week window (`weekBounds`): if the candidate shift
+ *   lands on a Sunday (the last day of its week), the week's Monday start
+ *   is up to 6 local days earlier. If it lands on a Monday (the first day),
+ *   the week's last day (Sunday) is up to 6 local days later. So the weekly
+ *   hours total alone needs +/-6 local days.
+ * - The 7-consecutive-day streak (`checkHours`): counts backward from the
+ *   candidate's local date and needs up to 6 prior local days to reach a
+ *   7-day streak.
+ * So the rules themselves need at most 6 days on either side.
+ *
+ * On top of that, `startAt` is a UTC instant, but "6 local days" is measured
+ * in the staff member's home-timezone calendar, and this query runs before
+ * that timezone conversion happens (it's a plain UTC range on `startAt`, so
+ * the window and the DB round trip don't depend on first loading the staff
+ * record). IANA offsets range from UTC-12 to UTC+14, so a local calendar day
+ * can fall up to a day earlier or later than the UTC day containing the same
+ * instant. Padding the 6-day rule requirement by that offset slop rounds up
+ * to 9 days, which is also comfortably wide for DST transition weeks (which
+ * are only ever off by an hour, not a day).
+ */
+const ASSIGNMENT_HISTORY_WINDOW_DAYS = 9;
+
+/**
+ * The `[start, end]` UTC bounds (inclusive) that
+ * `ASSIGNMENT_HISTORY_WINDOW_DAYS` maps to around a candidate shift's
+ * `startAt`. See that constant's doc comment for why 9 days is sufficient.
+ */
+function assignmentHistoryWindow(shiftStartAt: Date): { start: Date; end: Date } {
+  const windowMs = ASSIGNMENT_HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  return {
+    start: new Date(shiftStartAt.getTime() - windowMs),
+    end: new Date(shiftStartAt.getTime() + windowMs),
+  };
+}
+
+/**
  * Composes all three constraint rule modules: eligibility, conflicts, and hours.
  *
  * Returns `allowed: false` if ANY violation has severity BLOCK.
@@ -67,6 +110,10 @@ export async function loadContext(
     throw new Error(`Shift ${shiftId} not found`);
   }
 
+  // See ASSIGNMENT_HISTORY_WINDOW_DAYS' doc comment for why 9 days either
+  // side is wide enough to cover everything checkHours needs.
+  const historyWindow = assignmentHistoryWindow(shift.startAt);
+
   const [
     staff,
     location,
@@ -88,7 +135,10 @@ export async function loadContext(
     }),
     client.availability.findMany({ where: { staffId } }),
     client.shiftAssignment.findMany({
-      where: { staffId },
+      where: {
+        staffId,
+        shift: { startAt: { gte: historyWindow.start, lte: historyWindow.end } },
+      },
       include: { shift: { include: { location: true } } },
     }),
   ]);

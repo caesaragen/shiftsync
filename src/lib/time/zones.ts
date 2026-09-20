@@ -8,8 +8,46 @@ import { DateTime } from "luxon";
  * assume a fixed offset and break on DST transition days.
  */
 
+/**
+ * Parse a bare "YYYY-MM-DD" string safely as a calendar date, not as UTC midnight.
+ *
+ * JavaScript's `new Date("YYYY-MM-DD")` interprets the string as UTC midnight
+ * (e.g., "2026-09-14" → 2026-09-14T00:00:00.000Z). For timezones behind UTC
+ * (all US zones), this instant falls on the *previous* calendar day locally
+ * (e.g., EDT is UTC-4, so UTC midnight becomes the previous day 8 PM). This
+ * breaks week-boundary and day-boundary calculations.
+ *
+ * This function anchors to noon UTC instead, which is safe for all real-world
+ * zones this app uses (US zones are UTC-4 to UTC-8): noon UTC cannot cross
+ * into a different local day for offsets within +/-12 hours.
+ */
+export function parseDateOnly(dateStr: string): Date {
+  return new Date(`${dateStr}T12:00:00.000Z`);
+}
+
 export function toZoned(instant: Date, timeZone: string): DateTime {
   return DateTime.fromJSDate(instant, { zone: timeZone });
+}
+
+/**
+ * Parse a datetime-local string (e.g. "2027-01-15T09:00", as produced by an
+ * `<input type="datetime-local">`) as wall-clock time IN `timeZone`.
+ *
+ * These strings carry no timezone designator. JavaScript's `new
+ * Date("2027-01-15T09:00")` interprets a date-TIME string with no offset in
+ * the RUNTIME's own local system timezone -- not the browser's zone, and
+ * not whatever zone the value is semantically meant to represent (e.g. the
+ * timezone of the location a shift belongs to). On Vercel that runtime zone
+ * is typically UTC; locally it's whatever the machine is set to. Either way
+ * it is essentially never the zone the caller actually meant, so every
+ * value parsed this way is silently wrong by the gap between those two
+ * zones. Always route a datetime-local value through this function with the
+ * zone it is actually meant to represent instead of the bare `Date`
+ * constructor.
+ */
+export function parseLocalDateTime(dateTimeStr: string, timeZone: string): Date {
+  const parsed = DateTime.fromISO(dateTimeStr, { zone: timeZone });
+  return parsed.toJSDate();
 }
 
 /** "2026-03-08" -- the calendar date `instant` falls on in `timeZone`. */

@@ -4,6 +4,18 @@ import type { EngineContext, Violation } from "./types";
 
 /**
  * Helper to format a date string like "2026-06-20" into "Mon Jun 20".
+ *
+ * `dateStr` is a calendar-date key (from `localDateKey`) already resolved
+ * in the staff member's own home timezone -- it isn't a UTC instant, just
+ * "which day this is." The `Date` built from it is anchored to UTC
+ * midnight, so the weekday/month/day MUST also be read back out via
+ * explicit `timeZone: "UTC"` -- without it, `toLocaleDateString` falls back
+ * to the RUNTIME's own local system timezone, and for a runtime behind UTC
+ * (any US zone) that reads UTC midnight as the previous day, silently
+ * naming the wrong weekday in a violation message. This has coincidentally
+ * never surfaced because this app's actual deployment runtime happens to
+ * default to UTC -- exactly the kind of latent, environment-dependent bug
+ * this codebase has hit repeatedly elsewhere.
  */
 function formatDateString(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
@@ -12,6 +24,7 @@ function formatDateString(dateStr: string): string {
     weekday: "short",
     month: "short",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
