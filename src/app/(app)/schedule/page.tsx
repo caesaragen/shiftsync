@@ -6,16 +6,21 @@ import { listAllSkills } from "@/lib/skills";
 import { weekBounds, parseDateOnly } from "@/lib/time/zones";
 import { WeekGrid } from "./_components/WeekGrid";
 import { publishWeekAction, unpublishWeekAction, createShiftAction } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
+import { FlashToast } from "@/components/toast/FlashToast";
+import { ScheduleSkeleton } from "./_components/ScheduleSkeleton";
 
 async function ScheduleContent({
   locationId,
   weekOfStr,
   shiftError,
+  scheduleSuccess,
   accessDenied,
 }: {
   readonly locationId: string;
   readonly weekOfStr: string;
   readonly shiftError?: string;
+  readonly scheduleSuccess?: string;
   readonly accessDenied?: boolean;
 }) {
   const user = await requireUser();
@@ -47,6 +52,7 @@ async function ScheduleContent({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
+      <FlashToast success={scheduleSuccess} />
       <h1 className="text-xl font-semibold tracking-tight">Schedule</h1>
       <p className="mt-1 text-sm text-gray-500">Manage shifts for {selectedLocation.name}</p>
 
@@ -76,12 +82,12 @@ async function ScheduleContent({
               className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
             />
           </label>
-          <button
-            type="submit"
-            className="rounded border border-border-subtle bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+          <SubmitButton
+            pendingText="Loading…"
+            className="rounded border border-border-subtle bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-70"
           >
             Load
-          </button>
+          </SubmitButton>
         </form>
 
         {/* Publish/Unpublish controls */}
@@ -92,12 +98,12 @@ async function ScheduleContent({
               await publishWeekAction(selectedLocation.id, weekOfStr);
             }}
           >
-            <button
-              type="submit"
-              className="rounded bg-accent px-3 py-2 text-sm text-white hover:bg-accent-hover"
+            <SubmitButton
+              pendingText="Publishing…"
+              className="rounded bg-accent px-3 py-2 text-sm text-white hover:bg-accent-hover disabled:opacity-70"
             >
               Publish week
-            </button>
+            </SubmitButton>
           </form>
           <form
             action={async () => {
@@ -105,12 +111,12 @@ async function ScheduleContent({
               await unpublishWeekAction(selectedLocation.id, weekOfStr);
             }}
           >
-            <button
-              type="submit"
-              className="rounded border border-border-subtle bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            <SubmitButton
+              pendingText="Unpublishing…"
+              className="rounded border border-border-subtle bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-70"
             >
               Unpublish week
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </div>
@@ -184,12 +190,12 @@ async function ScheduleContent({
             />
           </label>
 
-          <button
-            type="submit"
-            className="self-start rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
+          <SubmitButton
+            pendingText="Creating…"
+            className="self-start rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-70"
           >
             Create shift
-          </button>
+          </SubmitButton>
         </form>
       </div>
 
@@ -204,7 +210,12 @@ async function ScheduleContent({
 export default async function SchedulePage({
   searchParams,
 }: {
-  readonly searchParams: Promise<{ locationId?: string; weekOf?: string; shiftError?: string }>;
+  readonly searchParams: Promise<{
+    locationId?: string;
+    weekOf?: string;
+    shiftError?: string;
+    success?: string;
+  }>;
 }) {
   const user = await requireUser();
   const locations = await listLocations(user);
@@ -219,7 +230,7 @@ export default async function SchedulePage({
     if (!canSeeLocation(scope, requestedLocationId)) {
       // Show error for explicit access denial
       return (
-        <Suspense fallback={<div className="mx-auto max-w-6xl px-6 py-12">Loading...</div>}>
+        <Suspense fallback={<ScheduleSkeleton />}>
           <ScheduleContent
             locationId={requestedLocationId}
             weekOfStr={params.weekOf || ""}
@@ -259,11 +270,12 @@ export default async function SchedulePage({
   }
 
   return (
-    <Suspense fallback={<div className="mx-auto max-w-6xl px-6 py-12">Loading...</div>}>
+    <Suspense fallback={<ScheduleSkeleton />}>
       <ScheduleContent
         locationId={locationId}
         weekOfStr={weekOfStr!}
         shiftError={params.shiftError}
+        scheduleSuccess={params.success}
       />
     </Suspense>
   );

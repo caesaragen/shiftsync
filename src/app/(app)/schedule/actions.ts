@@ -65,7 +65,9 @@ export async function createShiftAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/schedule");
-  redirect(`/schedule?locationId=${encodeURIComponent(locationId)}`);
+  redirect(
+    `/schedule?locationId=${encodeURIComponent(locationId)}&success=${encodeURIComponent("Shift created.")}`,
+  );
 }
 
 export async function publishWeekAction(locationId: string, weekOf: string): Promise<void> {
@@ -76,6 +78,9 @@ export async function publishWeekAction(locationId: string, weekOf: string): Pro
   await publishWeek(user, locationId, weekOfDate);
 
   revalidatePath("/schedule");
+  redirect(
+    `/schedule?locationId=${encodeURIComponent(locationId)}&weekOf=${encodeURIComponent(weekOf)}&success=${encodeURIComponent("Week published.")}`,
+  );
 }
 
 export async function unpublishWeekAction(locationId: string, weekOf: string): Promise<void> {
@@ -95,4 +100,7 @@ export async function unpublishWeekAction(locationId: string, weekOf: string): P
   }
 
   revalidatePath("/schedule");
+  redirect(
+    `/schedule?locationId=${encodeURIComponent(locationId)}&weekOf=${encodeURIComponent(weekOf)}&success=${encodeURIComponent("Week unpublished.")}`,
+  );
 }

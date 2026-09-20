@@ -1,18 +1,21 @@
 import { requireRole } from "@/lib/authz";
 import { listAllSkills } from "@/lib/skills";
 import { createSkillAction } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
+import { FlashToast } from "@/components/toast/FlashToast";
 
 export default async function AdminSkillsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  readonly searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const user = await requireRole("ADMIN");
-  const { error } = await searchParams;
+  const { error, success } = await searchParams;
   const skills = await listAllSkills(user);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
+      <FlashToast error={error} success={success} />
       <h1 className="text-xl font-semibold tracking-tight">Skills</h1>
       <p className="mt-1 text-sm text-gray-500">
         Skills staff can be certified in and scheduled against.
@@ -54,9 +57,12 @@ export default async function AdminSkillsPage({
             className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
           />
         </label>
-        <button type="submit" className="rounded bg-accent px-3 py-2 text-white">
+        <SubmitButton
+          pendingText="Adding…"
+          className="rounded bg-accent px-3 py-2 text-white hover:bg-accent-hover disabled:opacity-70"
+        >
           Add skill
-        </button>
+        </SubmitButton>
       </form>
     </main>
   );

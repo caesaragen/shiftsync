@@ -24,5 +24,6 @@ export async function createLocationAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/admin/locations");
-  redirect("/admin/locations");
+  const successMessage = `${name} was added.`;
+  redirect(`/admin/locations?success=${encodeURIComponent(successMessage)}`);
 }

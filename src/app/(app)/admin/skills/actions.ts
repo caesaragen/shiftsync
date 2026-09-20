@@ -21,5 +21,6 @@ export async function createSkillAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/admin/skills");
-  redirect("/admin/skills");
+  const successMessage = `${name} was added.`;
+  redirect(`/admin/skills?success=${encodeURIComponent(successMessage)}`);
 }

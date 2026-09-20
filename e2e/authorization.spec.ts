@@ -36,6 +36,8 @@ for (const [role, credentials] of [
 
     // Confirm we actually landed on the dashboard as the expected role,
     // rather than some other unrelated page that also lacks the button.
-    await expect(page.getByText(role, { exact: true })).toBeVisible();
+    // Scoped to <main>: the nav header also displays the role badge on every
+    // page, so a bare getByText(role) is ambiguous between the two.
+    await expect(page.getByRole("main").getByText(role, { exact: true })).toBeVisible();
   });
 }

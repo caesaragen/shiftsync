@@ -8,6 +8,8 @@ import {
   certifyStaffAction,
   decertifyStaffAction,
 } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
+import { FlashToast } from "@/components/toast/FlashToast";
 
 function formatDate(date: Date): string {
   return new Date(date).toLocaleDateString("en-US", {
@@ -20,10 +22,10 @@ function formatDate(date: Date): string {
 export default async function AdminStaffPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  readonly searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const user = await requireRole("ADMIN");
-  const { error } = await searchParams;
+  const { error, success } = await searchParams;
   const [staff, skills, locations] = await Promise.all([
     listStaffAssignments(user),
     listAllSkills(user),
@@ -32,6 +34,7 @@ export default async function AdminStaffPage({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
+      <FlashToast error={error} success={success} />
       <h1 className="text-xl font-semibold tracking-tight">Staff</h1>
       <p className="mt-1 text-sm text-gray-500">
         Skills and location certifications for staff members.
@@ -72,12 +75,12 @@ export default async function AdminStaffPage({
                         <form action={removeSkillAction}>
                           <input type="hidden" name="staffId" value={member.id} />
                           <input type="hidden" name="skillId" value={skill.id} />
-                          <button
-                            type="submit"
-                            className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-900"
+                          <SubmitButton
+                            pendingText="Removing…"
+                            className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-900 disabled:opacity-60"
                           >
                             Remove
-                          </button>
+                          </SubmitButton>
                         </form>
                       </li>
                     ))}
@@ -107,9 +110,12 @@ export default async function AdminStaffPage({
                           </option>
                         ))}
                       </select>
-                      <button type="submit" className="rounded bg-accent px-2 py-1 text-white">
+                      <SubmitButton
+                        pendingText="Adding…"
+                        className="rounded bg-accent px-2 py-1 text-white hover:bg-accent-hover disabled:opacity-70"
+                      >
                         Add
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </section>
@@ -128,12 +134,12 @@ export default async function AdminStaffPage({
                             <form action={decertifyStaffAction}>
                               <input type="hidden" name="staffId" value={member.id} />
                               <input type="hidden" name="locationId" value={cert.locationId} />
-                              <button
-                                type="submit"
-                                className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-900"
+                              <SubmitButton
+                                pendingText="Ending…"
+                                className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-900 disabled:opacity-60"
                               >
                                 End certification
-                              </button>
+                              </SubmitButton>
                             </form>
                           </>
                         ) : (
@@ -174,9 +180,12 @@ export default async function AdminStaffPage({
                           </option>
                         ))}
                       </select>
-                      <button type="submit" className="rounded bg-accent px-2 py-1 text-white">
+                      <SubmitButton
+                        pendingText="Certifying…"
+                        className="rounded bg-accent px-2 py-1 text-white hover:bg-accent-hover disabled:opacity-70"
+                      >
                         Certify
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </section>

@@ -5,6 +5,7 @@ import type { Violation } from "@/lib/constraints/types";
 import type { Suggestion } from "@/lib/constraints/suggestions";
 import { assignAction, unassignAction, suggestAlternativesAction } from "../actions";
 import { ViolationList } from "./ViolationList";
+import { useToast } from "@/components/toast/ToastProvider";
 
 export type RosterEntry = {
   assignmentId: string;
@@ -50,6 +51,7 @@ export function AssignmentPanel({
   readonly roster: RosterEntry[];
   readonly candidates: CandidateVerdict[];
 }) {
+  const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
@@ -110,6 +112,7 @@ export function AssignmentPanel({
       });
 
       if (result.ok) {
+        toast(`${selectedCandidate.name} assigned to this shift.`);
         setSelectedStaffId(null);
         setOverrideReason("");
         setSubmitResult(null);
@@ -124,25 +127,29 @@ export function AssignmentPanel({
       }
 
       if (result.kind === "conflict") {
-        setSubmitResult({
-          kind: "conflict",
-          message:
-            "This shift changed while you were viewing it. Refresh to see the current state.",
-        });
+        const message =
+          "This shift changed while you were viewing it. Refresh to see the current state.";
+        setSubmitResult({ kind: "conflict", message });
+        toast(message, "error");
         return;
       }
 
       setSubmitResult({ kind: "error", message: result.message });
+      toast(result.message, "error");
     });
   }
 
   function handleUnassign(assignmentId: string) {
     setUnassignError(null);
+    const entry = roster.find((r) => r.assignmentId === assignmentId);
     startTransition(async () => {
       const result = await unassignAction({ assignmentId, shiftId });
       if (!result.ok) {
         setUnassignError(result.message);
+        toast(result.message, "error");
+        return;
       }
+      toast(entry ? `${entry.name} unassigned from this shift.` : "Unassigned from this shift.");
     });
   }
 

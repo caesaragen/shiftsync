@@ -10,6 +10,10 @@ function fail(error: unknown): never {
   redirect(`/admin/staff?error=${encodeURIComponent(message)}`);
 }
 
+function succeed(message: string): never {
+  redirect(`/admin/staff?success=${encodeURIComponent(message)}`);
+}
+
 export async function assignSkillAction(formData: FormData): Promise<void> {
   // Authorization first, before any validation or database work. Server
   // Actions are publicly callable HTTP endpoints regardless of what the UI
@@ -27,7 +31,7 @@ export async function assignSkillAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/admin/staff");
-  redirect("/admin/staff");
+  succeed("Skill added.");
 }
 
 export async function removeSkillAction(formData: FormData): Promise<void> {
@@ -44,7 +48,7 @@ export async function removeSkillAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/admin/staff");
-  redirect("/admin/staff");
+  succeed("Skill removed.");
 }
 
 export async function certifyStaffAction(formData: FormData): Promise<void> {
@@ -61,7 +65,7 @@ export async function certifyStaffAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/admin/staff");
-  redirect("/admin/staff");
+  succeed("Certified.");
 }
 
 export async function decertifyStaffAction(formData: FormData): Promise<void> {
@@ -78,5 +82,5 @@ export async function decertifyStaffAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/admin/staff");
-  redirect("/admin/staff");
+  succeed("Certification ended.");
 }
