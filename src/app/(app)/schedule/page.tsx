@@ -50,11 +50,23 @@ async function ScheduleContent({
   const shifts = await listWeekShifts(user, selectedLocation.id, weekOf);
   const skills = await listAllSkills(user);
 
+  // Publishing and shift creation are manager/admin actions -- the Server
+  // Actions themselves already enforce this (requireRole("MANAGER", "ADMIN")
+  // in schedule/actions.ts), but rendering the controls to STAFF anyway let
+  // a staff member fill out and submit the create-shift form only to be
+  // silently redirected to /dashboard with no explanation. Gating the
+  // controls here matches the pattern already used on the shift detail
+  // page (`canManage` there too) so STAFF gets a clean read-only schedule
+  // instead of a form that looks live but always fails.
+  const canManage = user.role === "MANAGER" || user.role === "ADMIN";
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       <FlashToast success={scheduleSuccess} />
       <h1 className="text-xl font-semibold tracking-tight">Schedule</h1>
-      <p className="mt-1 text-sm text-gray-500">Manage shifts for {selectedLocation.name}</p>
+      <p className="mt-1 text-sm text-gray-500">
+        {canManage ? "Manage shifts for" : "Shifts for"} {selectedLocation.name}
+      </p>
 
       {/* Controls */}
       <div className="mt-8 flex flex-col gap-6 rounded-lg border border-border-subtle bg-surface p-5 shadow-sm">
@@ -90,114 +102,118 @@ async function ScheduleContent({
           </SubmitButton>
         </form>
 
-        {/* Publish/Unpublish controls */}
-        <div className="flex gap-2">
-          <form
-            action={async () => {
-              "use server";
-              await publishWeekAction(selectedLocation.id, weekOfStr);
-            }}
-          >
-            <SubmitButton
-              pendingText="Publishing…"
-              className="rounded bg-accent px-3 py-2 text-sm text-white hover:bg-accent-hover disabled:opacity-70"
+        {/* Publish/Unpublish controls -- manager/admin only */}
+        {canManage && (
+          <div className="flex gap-2">
+            <form
+              action={async () => {
+                "use server";
+                await publishWeekAction(selectedLocation.id, weekOfStr);
+              }}
             >
-              Publish week
-            </SubmitButton>
-          </form>
-          <form
-            action={async () => {
-              "use server";
-              await unpublishWeekAction(selectedLocation.id, weekOfStr);
-            }}
-          >
-            <SubmitButton
-              pendingText="Unpublishing…"
-              className="rounded border border-border-subtle bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-70"
+              <SubmitButton
+                pendingText="Publishing…"
+                className="rounded bg-accent px-3 py-2 text-sm text-white hover:bg-accent-hover disabled:opacity-70"
+              >
+                Publish week
+              </SubmitButton>
+            </form>
+            <form
+              action={async () => {
+                "use server";
+                await unpublishWeekAction(selectedLocation.id, weekOfStr);
+              }}
             >
-              Unpublish week
+              <SubmitButton
+                pendingText="Unpublishing…"
+                className="rounded border border-border-subtle bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-70"
+              >
+                Unpublish week
+              </SubmitButton>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* Create shift form -- manager/admin only */}
+      {canManage && (
+        <div className="mt-8 rounded-lg border border-border-subtle bg-surface p-5 shadow-sm">
+          <h2 className="text-base font-semibold tracking-tight">Create a shift</h2>
+          {shiftError && (
+            <p role="alert" className="mt-3 text-sm text-red-600">
+              {shiftError}
+            </p>
+          )}
+          <form action={createShiftAction} className="mt-4 flex max-w-2xl flex-col gap-4">
+            <input type="hidden" name="locationId" value={selectedLocation.id} />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Start date & time</span>
+                <input
+                  name="startAt"
+                  type="datetime-local"
+                  required
+                  className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">End date & time</span>
+                <input
+                  name="endAt"
+                  type="datetime-local"
+                  required
+                  className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Skill required</span>
+                <select
+                  name="requiredSkillId"
+                  required
+                  className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option value="">Select a skill</option>
+                  {skills.map((skill) => (
+                    <option key={skill.id} value={skill.id}>
+                      {skill.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium">Headcount needed</span>
+                <input
+                  name="headcount"
+                  type="number"
+                  min="1"
+                  defaultValue="1"
+                  required
+                  className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
+                />
+              </label>
+            </div>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium">Notes</span>
+              <textarea
+                name="notes"
+                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
+              />
+            </label>
+
+            <SubmitButton
+              pendingText="Creating…"
+              className="self-start rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-70"
+            >
+              Create shift
             </SubmitButton>
           </form>
         </div>
-      </div>
-
-      {/* Create shift form */}
-      <div className="mt-8 rounded-lg border border-border-subtle bg-surface p-5 shadow-sm">
-        <h2 className="text-base font-semibold tracking-tight">Create a shift</h2>
-        {shiftError && (
-          <p role="alert" className="mt-3 text-sm text-red-600">
-            {shiftError}
-          </p>
-        )}
-        <form action={createShiftAction} className="mt-4 flex max-w-2xl flex-col gap-4">
-          <input type="hidden" name="locationId" value={selectedLocation.id} />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">Start date & time</span>
-              <input
-                name="startAt"
-                type="datetime-local"
-                required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">End date & time</span>
-              <input
-                name="endAt"
-                type="datetime-local"
-                required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
-              />
-            </label>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">Skill required</span>
-              <select
-                name="requiredSkillId"
-                required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
-              >
-                <option value="">Select a skill</option>
-                {skills.map((skill) => (
-                  <option key={skill.id} value={skill.id}>
-                    {skill.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">Headcount needed</span>
-              <input
-                name="headcount"
-                type="number"
-                min="1"
-                defaultValue="1"
-                required
-                className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
-              />
-            </label>
-          </div>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium">Notes</span>
-            <textarea
-              name="notes"
-              className="rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-accent"
-            />
-          </label>
-
-          <SubmitButton
-            pendingText="Creating…"
-            className="self-start rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-70"
-          >
-            Create shift
-          </SubmitButton>
-        </form>
-      </div>
+      )}
 
       {/* Week grid */}
       <div className="mt-8">
