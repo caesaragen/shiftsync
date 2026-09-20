@@ -36,12 +36,7 @@ are live, with a tested `writeAuditLog`/`notify`/`listNotifications`/
 `markRead` data layer following the same transaction-client pattern as
 Phase 2's `assignStaffToShift` — but no swap/drop request can currently be
 made through the UI, and no notification is currently triggered by
-anything. This was stopped deliberately partway through, ahead of the
-deadline, to prioritize documentation and production polish over shipping
-a half-built UI. `docs/superpowers/plans/2026-09-20-phase4-swap-workflow.md`
-has the full 10-task plan, including the 3 completed tasks and the 7
-remaining ones (the staff/manager UI, the swap state machine's edge cases,
-and E2E coverage).
+anything.
 
 Real-time updates and fairness-analytics reporting remain unbuilt.
 
@@ -212,7 +207,7 @@ Phase 3 (the scheduling UI) locks in three more:
 ## Known limitations
 
 - **Login rate limiting** — not yet implemented. The demo accounts' passwords
-  being public is an acceptable risk for this take-home evaluation.
+  being public is an acceptable risk for this evaluation.
 - **Role revalidation** — Role is read once into the JWT at sign-in and not
   revalidated on every request; a role change (e.g. an admin demoting a
   manager) only takes effect the next time that user signs in, not
@@ -230,8 +225,7 @@ Phase 3 (the scheduling UI) locks in three more:
   user, so demo data is correct; a real signup/admin "create staff" flow
   would need to derive it.
 - **CI configuration** — the build step (`npm run build`) needs `DATABASE_URL`,
-  `DIRECT_URL`, and `AUTH_SECRET` to complete. Manual trigger only due to
-  GitHub Actions billing lock on this account.
+  `DIRECT_URL`, and `AUTH_SECRET` to complete.
 - **Features not yet built** — the swap/drop/coverage workflow has its
   schema and data layer (`SwapRequest`, `Notification`, `AuditLog`,
   `src/lib/swaps.ts`'s planned state machine) but no UI, no notification
