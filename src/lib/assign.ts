@@ -112,7 +112,26 @@ export async function assignStaffToShift(
             throw err;
           }
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          // Prisma's default transaction `timeout` is 5000ms. Live testing
+          // against this database showed `loadContext` ALONE (one of the two
+          // calls made inside this transaction -- see above) taking
+          // ~4316ms end-to-end over real network latency, before
+          // `validateAssignment` or the `create()` write even run. That
+          // leaves the default budget with no headroom at all, and in
+          // practice the transaction reliably times out and the write never
+          // happens. `timeout` is raised well above the observed latency
+          // (with margin for the write itself and for jitter, including
+          // under a retry); `maxWait` -- how long Prisma waits to acquire a
+          // transaction slot before starting -- doesn't need the same
+          // margin, so it stays closer to the default. Do NOT remove or
+          // shrink these back toward Prisma's defaults without re-measuring
+          // real latency first: this is a measured fix for a 100%-repro
+          // production timeout, not stylistic tuning.
+          timeout: 15_000,
+          maxWait: 5_000,
+        },
       );
     } catch (err) {
       // Already-mapped errors propagate as-is, never retried.

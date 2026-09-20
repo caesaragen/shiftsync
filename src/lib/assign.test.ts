@@ -109,7 +109,16 @@ describe("assignStaffToShift", () => {
     expect(mockedLoadContext).toHaveBeenCalledWith("staff-1", "shift-1", tx);
     // The whole point of this task: the isolation level must actually be
     // Serializable, not just "some transaction".
-    expect(capturedOptions[0]).toMatchObject({ isolationLevel: "Serializable" });
+    // Explicit timeout/maxWait must be set: Prisma's 5000ms default timeout
+    // is not enough headroom for this database's real latency (loadContext
+    // alone measured ~4316ms live), so the transaction reliably timed out in
+    // production. Asserting isolationLevel alone would not catch this option
+    // being silently dropped later.
+    expect(capturedOptions[0]).toMatchObject({
+      isolationLevel: "Serializable",
+      timeout: 15_000,
+      maxWait: 5_000,
+    });
   });
 
   it("throws AssignmentBlockedError with violations and never writes on a BLOCK", async () => {
